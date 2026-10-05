@@ -3,6 +3,7 @@ package com.musicorbit.data.repository
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.musicorbit.db.MusicOrbitDatabase
+import com.musicorbit.db.Song as DbSong
 import com.musicorbit.domain.model.Song
 import com.musicorbit.domain.model.SongData
 import com.musicorbit.domain.repository.SongRepository
@@ -92,7 +93,7 @@ class SongRepositoryImpl(
 
     // ── mapping ───────────────────────────────────────────────────────────────
 
-    private fun com.musicorbit.db.Song.toDomain() = Song(
+    private fun DbSong.toDomain() = Song(
         id          = id,
         title       = title,
         artist      = artist,

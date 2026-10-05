@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme — Compose handles everything; this is just the window theme -->
-    <style name="Theme.MusicOrbit" parent="android:Theme.Material.NoTitleBar" />
+    <!--
+        App uses Jetpack Compose with Material3.
+        This theme is the "bridge" theme used only while the Activity
+        inflates before Compose takes over. It must NOT inherit from
+        Theme.Material (old) because that requires API 21 Material resources.
+        Theme.AppCompat.Light.NoActionBar is safe for minSdk 24.
+    -->
+    <style name="Theme.MusicOrbit" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
 </resources>
