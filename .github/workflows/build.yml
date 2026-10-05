@@ -18,6 +18,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Download Gradle Wrapper JAR
+        run: |
+          mkdir -p gradle/wrapper
+          curl -L --output gradle/wrapper/gradle-wrapper.jar \
+            "https://github.com/gradle/gradle/raw/v8.11.1/gradle/wrapper/gradle-wrapper.jar"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
@@ -45,6 +51,12 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Download Gradle Wrapper JAR
+        run: |
+          mkdir -p gradle/wrapper
+          curl -L --output gradle/wrapper/gradle-wrapper.jar \
+            "https://github.com/gradle/gradle/raw/v8.11.1/gradle/wrapper/gradle-wrapper.jar"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
