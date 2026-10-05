@@ -41,11 +41,12 @@ FROM Song s
 LEFT JOIN Lyrics l ON s.id = l.songId;
 
 upsertSong:
-INSERT OR REPLACE INTO Song VALUES ?;
+INSERT OR REPLACE INTO Song(id, title, artist, album, duration, filePath, albumArtUri, playCount, dateAdded)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
-upsertSongs {
-INSERT OR REPLACE INTO Song VALUES ?;
-}
+upsertSongs:
+INSERT OR REPLACE INTO Song(id, title, artist, album, duration, filePath, albumArtUri, playCount, dateAdded)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 incrementPlayCount:
 UPDATE Song SET playCount = playCount + 1 WHERE id = :songId;
@@ -59,7 +60,8 @@ getLyricsBySongId:
 SELECT * FROM Lyrics WHERE songId = :songId;
 
 upsertLyrics:
-INSERT OR REPLACE INTO Lyrics VALUES ?;
+INSERT OR REPLACE INTO Lyrics(songId, lyricsText, hasLrc)
+VALUES (?, ?, ?);
 
 deleteLyrics:
 DELETE FROM Lyrics WHERE songId = :songId;
