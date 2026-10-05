@@ -41,6 +41,12 @@ dependencies {
     // Shared KMP module
     implementation(project(":shared"))
 
+    // SQLDelight Android driver (needed for AndroidSqliteDriver in DI)
+    implementation(libs.sqldelight.android)
+
+    // Multiplatform Settings (needed for SharedPreferencesSettings in DI)
+    implementation(libs.multiplatform.settings)
+
     // Compose BOM
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
