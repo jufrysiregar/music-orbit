@@ -1,0 +1,78 @@
+# ==========================================
+# Android / Kotlin Multiplatform .gitignore
+# ==========================================
+
+# --- Gradle ---
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+build/
+**/build/
+
+# --- Local config (sensitive, machine-specific) ---
+local.properties
+local.defaults.properties
+
+# --- Android Studio / IntelliJ IDEA ---
+*.iml
+.idea/
+*.iws
+*.ipr
+out/
+captures/
+.navigation/
+
+# --- macOS ---
+.DS_Store
+*.DS_Store
+
+# --- Windows ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Native build ---
+.externalNativeBuild/
+.cxx/
+
+# --- Kotlin/Native ---
+*.klib
+kotlin-js-store/
+
+# --- Kotlin Multiplatform ---
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+DerivedData/
+
+# --- ProGuard ---
+*.map
+
+# --- Logs & temp files ---
+*.log
+*.tmp
+*.bak
+*.swp
+*.orig
+
+# --- Test results ---
+test-results/
+**/test-results/
+
+# --- Coverage ---
+coverage/
+*.exec
+
+# --- APKs, AABs, and release artifacts ---
+*.apk
+*.aab
+*.aar
+
+# --- Keystore (DO NOT commit signing keys) ---
+*.jks
+*.keystore
+
+# --- Node / JS (if any web tooling is used) ---
+node_modules/
+npm-debug.log
+yarn-error.log

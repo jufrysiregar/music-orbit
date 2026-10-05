@@ -1,0 +1,2 @@
+-keep class com.musicorbit.** { *; }
+-keepclassmembers class * extends androidx.lifecycle.ViewModel { *; }

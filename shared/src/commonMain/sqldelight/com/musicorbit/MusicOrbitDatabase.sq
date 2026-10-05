@@ -1,0 +1,65 @@
+CREATE TABLE IF NOT EXISTS Song (
+    id          INTEGER NOT NULL PRIMARY KEY,
+    title       TEXT    NOT NULL,
+    artist      TEXT    NOT NULL,
+    album       TEXT    NOT NULL,
+    duration    INTEGER NOT NULL,
+    filePath    TEXT    NOT NULL,
+    albumArtUri TEXT,
+    playCount   INTEGER NOT NULL DEFAULT 0,
+    dateAdded   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Lyrics (
+    songId      INTEGER NOT NULL PRIMARY KEY REFERENCES Song(id) ON DELETE CASCADE,
+    lyricsText  TEXT    NOT NULL,
+    hasLrc      INTEGER NOT NULL DEFAULT 0  -- 0 = false, 1 = true
+);
+
+-- ─── Song Queries ────────────────────────────────────────────────────────────
+
+getAllSongs:
+SELECT * FROM Song ORDER BY title ASC;
+
+getSongsByDateAdded:
+SELECT * FROM Song ORDER BY dateAdded DESC;
+
+getSongsByPlayCount:
+SELECT * FROM Song ORDER BY playCount DESC;
+
+getSongsByArtist:
+SELECT * FROM Song ORDER BY artist ASC;
+
+searchSongs:
+SELECT * FROM Song
+WHERE title  LIKE '%' || :query || '%'
+   OR artist LIKE '%' || :query || '%';
+
+getSongsWithLyrics:
+SELECT s.*, l.lyricsText, l.hasLrc
+FROM Song s
+LEFT JOIN Lyrics l ON s.id = l.songId;
+
+upsertSong:
+INSERT OR REPLACE INTO Song VALUES ?;
+
+upsertSongs {
+INSERT OR REPLACE INTO Song VALUES ?;
+}
+
+incrementPlayCount:
+UPDATE Song SET playCount = playCount + 1 WHERE id = :songId;
+
+getSongById:
+SELECT * FROM Song WHERE id = :id;
+
+-- ─── Lyrics Queries ──────────────────────────────────────────────────────────
+
+getLyricsBySongId:
+SELECT * FROM Lyrics WHERE songId = :songId;
+
+upsertLyrics:
+INSERT OR REPLACE INTO Lyrics VALUES ?;
+
+deleteLyrics:
+DELETE FROM Lyrics WHERE songId = :songId;
