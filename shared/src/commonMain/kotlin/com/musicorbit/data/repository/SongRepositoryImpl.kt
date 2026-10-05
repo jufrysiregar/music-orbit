@@ -3,7 +3,6 @@ package com.musicorbit.data.repository
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.musicorbit.db.MusicOrbitDatabase
-import com.musicorbit.db.Song as DbSong
 import com.musicorbit.domain.model.Song
 import com.musicorbit.domain.model.SongData
 import com.musicorbit.domain.repository.SongRepository
@@ -22,7 +21,22 @@ class SongRepositoryImpl(
         queries.getAllSongs()
             .asFlow()
             .mapToList(Dispatchers.Default)
-            .map { rows -> rows.map { it.toDomain() } }
+            .map { rows ->
+                rows.map { row ->
+                    Song(
+                        id          = row.id,
+                        title       = row.title,
+                        artist      = row.artist,
+                        album       = row.album,
+                        duration    = row.duration,
+                        filePath    = row.filePath,
+                        albumArtUri = row.albumArtUri,
+                        playCount   = row.playCount.toInt(),
+                        dateAdded   = row.dateAdded,
+                        hasLyrics   = false
+                    )
+                }
+            }
 
     override fun getSongsWithLyrics(): Flow<List<Song>> =
         queries.getSongsWithLyrics()
@@ -49,7 +63,22 @@ class SongRepositoryImpl(
         queries.searchSongs(query)
             .asFlow()
             .mapToList(Dispatchers.Default)
-            .map { rows -> rows.map { it.toDomain() } }
+            .map { rows ->
+                rows.map { row ->
+                    Song(
+                        id          = row.id,
+                        title       = row.title,
+                        artist      = row.artist,
+                        album       = row.album,
+                        duration    = row.duration,
+                        filePath    = row.filePath,
+                        albumArtUri = row.albumArtUri,
+                        playCount   = row.playCount.toInt(),
+                        dateAdded   = row.dateAdded,
+                        hasLyrics   = false
+                    )
+                }
+            }
 
     override suspend fun upsertSong(song: Song): Unit = withContext(Dispatchers.Default) {
         queries.upsertSong(
@@ -88,21 +117,19 @@ class SongRepositoryImpl(
     }
 
     override suspend fun getSongById(songId: Long): Song? = withContext(Dispatchers.Default) {
-        queries.getSongById(songId).executeAsOneOrNull()?.toDomain()
+        queries.getSongById(songId).executeAsOneOrNull()?.let { row ->
+            Song(
+                id          = row.id,
+                title       = row.title,
+                artist      = row.artist,
+                album       = row.album,
+                duration    = row.duration,
+                filePath    = row.filePath,
+                albumArtUri = row.albumArtUri,
+                playCount   = row.playCount.toInt(),
+                dateAdded   = row.dateAdded,
+                hasLyrics   = false
+            )
+        }
     }
-
-    // ── mapping ───────────────────────────────────────────────────────────────
-
-    private fun DbSong.toDomain() = Song(
-        id          = id,
-        title       = title,
-        artist      = artist,
-        album       = album,
-        duration    = duration,
-        filePath    = filePath,
-        albumArtUri = albumArtUri,
-        playCount   = playCount.toInt(),
-        dateAdded   = dateAdded,
-        hasLyrics   = false   // resolved in getSongsWithLyrics
-    )
 }
