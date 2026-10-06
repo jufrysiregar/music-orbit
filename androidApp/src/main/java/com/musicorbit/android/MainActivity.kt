@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.musicorbit.android.ui.navigation.AppNavGraph
+import com.musicorbit.android.ui.screen.permission.PermissionScreen
 import com.musicorbit.android.ui.theme.MusicOrbitTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,7 +14,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MusicOrbitTheme {
-                AppNavGraph()
+                PermissionScreen {
+                    AppNavGraph(onExitApp = { finish() })
+                }
             }
         }
     }

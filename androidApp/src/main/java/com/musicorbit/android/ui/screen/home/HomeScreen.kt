@@ -143,12 +143,12 @@ fun HomeScreen(
             // Floating MiniPlayer overlay
             if (playbackState.currentSong != null) {
                 MiniPlayer(
-                    song      = playbackState.currentSong!!,
-                    isPlaying = playbackState.isPlaying,
-                    onStop    = playerViewModel::stop,
-                    onNext    = playerViewModel::skipNext,
-                    onClick   = { onSongClick(playbackState.currentSong!!) },
-                    modifier  = Modifier.align(Alignment.BottomCenter)
+                    song              = playbackState.currentSong!!,
+                    isPlaying         = playbackState.isPlaying,
+                    onTogglePlayPause = playerViewModel::togglePlayPause,
+                    onNext            = playerViewModel::skipNext,
+                    onClick           = { onSongClick(playbackState.currentSong!!) },
+                    modifier          = Modifier.align(Alignment.BottomCenter)
                 )
             }
         }

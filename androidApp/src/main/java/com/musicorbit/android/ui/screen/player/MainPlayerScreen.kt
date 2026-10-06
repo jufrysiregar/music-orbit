@@ -1,10 +1,11 @@
 package com.musicorbit.android.ui.screen.player
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +21,7 @@ import com.musicorbit.android.ui.components.SeekBarSection
 import com.musicorbit.domain.model.PlayMode
 import com.musicorbit.domain.model.Song
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPlayerScreen(
     viewModel: PlayerViewModel,
@@ -27,120 +29,182 @@ fun MainPlayerScreen(
     onNavigateToEqualizer: () -> Unit,
     onNavigateToLyrics: (Long) -> Unit
 ) {
-    val state by viewModel.playbackState.collectAsStateWithLifecycle()
+    val state          by viewModel.playbackState.collectAsStateWithLifecycle()
     var showEditDialog by remember { mutableStateOf(false) }
 
+    // System back → go back to home
     BackHandler { onNavigateToHome() }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-
-        // ── Album Art ───────────────────────────────────────────────────────
-        AlbumArtImage(
-            uri = state.currentSong?.albumArtUri,
-            modifier = Modifier
-                .size(280.dp)
-                .clip(RoundedCornerShape(16.dp))
-        )
-
-        // ── Title ───────────────────────────────────────────────────────────
-        Text(
-            text      = state.currentSong?.title ?: "Tidak ada lagu",
-            style     = MaterialTheme.typography.headlineMedium,
-            maxLines  = 2,
-            overflow  = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
-
-        // ── Artist row + Edit icon ──────────────────────────────────────────
-        Row(
-            modifier       = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Text(
-                text     = state.currentSong?.artist ?: "--",
-                style    = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onNavigateToHome) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Kembali ke Daftar Lagu"
+                        )
+                    }
+                }
             )
-            IconButton(onClick = { showEditDialog = true }) {
-                Icon(
-                    imageVector        = Icons.Default.Edit,
-                    contentDescription = "Edit metadata lagu"
-                )
-            }
         }
+    ) { innerPadding ->
 
-        // ── SeekBar + time ──────────────────────────────────────────────────
-        SeekBarSection(
-            position = state.currentPosition,
-            duration = state.duration,
-            onSeek   = viewModel::seekTo
-        )
-
-        // ── Main controls ────────────────────────────────────────────────────
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment     = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(onClick = viewModel::skipPrevious) {
-                Icon(Icons.Default.SkipPrevious, contentDescription = "Sebelumnya", modifier = Modifier.size(36.dp))
-            }
-            FilledIconButton(
-                onClick  = viewModel::togglePlayPause,
-                modifier = Modifier.size(64.dp)
+
+            // ── Album Art ────────────────────────────────────────────────────
+            AlbumArtImage(
+                uri      = state.currentSong?.albumArtUri,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(20.dp))
+            )
+
+            // ── Song info block ──────────────────────────────────────────────
+            Column(
+                modifier            = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
             ) {
-                Icon(
-                    imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (state.isPlaying) "Jeda" else "Putar",
-                    modifier           = Modifier.size(32.dp)
+                // Title
+                Text(
+                    text     = state.currentSong?.title ?: "Tidak ada lagu",
+                    style    = MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
                 )
-            }
-            IconButton(onClick = viewModel::skipNext) {
-                Icon(Icons.Default.SkipNext, contentDescription = "Berikutnya", modifier = Modifier.size(36.dp))
-            }
-        }
 
-        // ── Bottom row: EQ | Lyrics | PlayMode ────────────────────────────
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onNavigateToEqualizer) {
-                Icon(Icons.Default.Tune, contentDescription = "Equalizer")
+                Spacer(Modifier.height(4.dp))
+
+                // Artist + Edit button on same row
+                Row(
+                    modifier          = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text     = state.currentSong?.artist ?: "–",
+                        style    = MaterialTheme.typography.bodyLarge,
+                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick  = { showEditDialog = true },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Default.Edit,
+                            contentDescription = "Edit metadata",
+                            modifier           = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
-            TextButton(onClick = { state.currentSong?.id?.let { onNavigateToLyrics(it) } }) {
-                Icon(Icons.Default.Lyrics, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Lirik")
+
+            // ── SeekBar ──────────────────────────────────────────────────────
+            SeekBarSection(
+                position = state.currentPosition,
+                duration = state.duration,
+                onSeek   = viewModel::seekTo
+            )
+
+            // ── Main playback controls ────────────────────────────────────────
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick  = viewModel::skipPrevious,
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Icon(
+                        Icons.Default.SkipPrevious,
+                        contentDescription = "Sebelumnya",
+                        modifier           = Modifier.size(40.dp)
+                    )
+                }
+
+                FilledIconButton(
+                    onClick  = viewModel::togglePlayPause,
+                    modifier = Modifier.size(72.dp)
+                ) {
+                    Icon(
+                        imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (state.isPlaying) "Jeda" else "Putar",
+                        modifier           = Modifier.size(36.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick  = viewModel::skipNext,
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Icon(
+                        Icons.Default.SkipNext,
+                        contentDescription = "Berikutnya",
+                        modifier           = Modifier.size(40.dp)
+                    )
+                }
             }
-            IconButton(onClick = viewModel::cyclePlayMode) {
-                Icon(
-                    imageVector = when (state.playMode) {
-                        PlayMode.REPEAT_ONE -> Icons.Default.RepeatOne
-                        PlayMode.SHUFFLE    -> Icons.Default.Shuffle
-                        PlayMode.SEQUENTIAL -> Icons.Default.RepeatOn
-                    },
-                    contentDescription = "Mode pemutaran: ${state.playMode.name}"
-                )
+
+            // ── Secondary controls: EQ | Lyrics | Play Mode ──────────────────
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onNavigateToEqualizer) {
+                    Icon(Icons.Default.Tune, contentDescription = "Equalizer")
+                }
+
+                FilledTonalButton(
+                    onClick = {
+                        state.currentSong?.id?.let { onNavigateToLyrics(it) }
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Lyrics,
+                        contentDescription = null,
+                        modifier           = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Lirik")
+                }
+
+                IconButton(onClick = viewModel::cyclePlayMode) {
+                    Icon(
+                        imageVector        = when (state.playMode) {
+                            PlayMode.REPEAT_ONE -> Icons.Default.RepeatOne
+                            PlayMode.SHUFFLE    -> Icons.Default.Shuffle
+                            PlayMode.SEQUENTIAL -> Icons.Default.Repeat
+                        },
+                        contentDescription = "Mode: ${state.playMode.name}"
+                    )
+                }
             }
         }
     }
 
-    // ── Edit Metadata Dialog ─────────────────────────────────────────────────
+    // ── Edit metadata dialog ──────────────────────────────────────────────────
     if (showEditDialog && state.currentSong != null) {
         EditSongMetadataDialog(
-            song    = state.currentSong!!,
-            onSave  = { updated -> viewModel.updateSongMetadata(updated); showEditDialog = false },
+            song      = state.currentSong!!,
+            onSave    = { updated ->
+                viewModel.updateSongMetadata(updated)
+                showEditDialog = false
+            },
             onDismiss = { showEditDialog = false }
         )
     }
@@ -161,24 +225,26 @@ private fun EditSongMetadataDialog(
         text    = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = title,
+                    value         = title,
                     onValueChange = { title = it },
-                    label = { Text("Judul Lagu") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    label         = { Text("Judul Lagu") },
+                    singleLine    = true,
+                    modifier      = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = artist,
+                    value         = artist,
                     onValueChange = { artist = it },
-                    label = { Text("Artis") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    label         = { Text("Artis") },
+                    singleLine    = true,
+                    modifier      = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave(song.copy(title = title.trim(), artist = artist.trim()))
+                if (title.isNotBlank()) {
+                    onSave(song.copy(title = title.trim(), artist = artist.trim()))
+                }
             }) { Text("Simpan") }
         },
         dismissButton = {
