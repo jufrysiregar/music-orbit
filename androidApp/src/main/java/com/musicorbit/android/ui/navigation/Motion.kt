@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+
 package com.musicorbit.android.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibilityScope
