@@ -109,12 +109,19 @@ actual class MusicScanner(private val context: Context) {
         val baseName = audioFile.nameWithoutExtension
         val parent   = audioFile.parentFile ?: return null
 
-        fun tryRead(file: File, isLrc: Boolean): Lyrics? = try {
-            if (!file.exists() || !file.canRead()) return null
-            val raw  = file.readText().trim()
-            val text = if (isLrc) stripLrcTimestamps(raw) else raw
-            if (text.isNotBlank()) Lyrics(songId = songId, lyricsText = text, hasLrc = isLrc) else null
-        } catch (_: Exception) { null }  // may fail on Android 10+ scoped storage
+        fun tryRead(file: File, isLrc: Boolean): Lyrics? {
+            return try {
+                if (!file.exists() || !file.canRead()) {
+                    null
+                } else {
+                    val raw  = file.readText().trim()
+                    val text = if (isLrc) stripLrcTimestamps(raw) else raw
+                    if (text.isNotBlank()) Lyrics(songId = songId, lyricsText = text, hasLrc = isLrc) else null
+                }
+            } catch (_: Exception) {
+                null  // may fail on Android 10+ scoped storage
+            }
+        }
 
         // 1. Try .lrc (with timestamps)
         tryRead(File(parent, "$baseName.lrc"), true)?.let { return it }
