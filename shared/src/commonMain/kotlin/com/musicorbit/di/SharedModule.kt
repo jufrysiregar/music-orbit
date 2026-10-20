@@ -33,7 +33,7 @@ val sharedModule = module {
     // ── Use Cases ────────────────────────────────────────────────────────────
     factory { GetSongsUseCase(get()) }
     factory { GetSortedSongsUseCase(get()) }
-    factory { ScanMusicUseCase(get(), get()) }   // SongRepository + MusicScanner
+    factory { ScanMusicUseCase(get(), get(), get()) }   // SongRepository + MusicScanner + LyricsRepository
     factory { SaveLyricsUseCase(get()) }
     factory { GetLyricsUseCase(get()) }
 }

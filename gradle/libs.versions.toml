@@ -58,6 +58,7 @@ compose-ui-test-manifest   = { module = "androidx.compose.ui:ui-test-manifest" }
 compose-ui-test-junit4     = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-material3      = { module = "androidx.compose.material3:material3" }
 compose-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+compose-google-fonts   = { module = "androidx.compose.ui:ui-text-google-fonts",          version = "1.7.6" }
 navigation-compose     = { module = "androidx.navigation:navigation-compose",            version.ref = "navigation" }
 lifecycle-viewmodel    = { module = "androidx.lifecycle:lifecycle-viewmodel-compose",    version.ref = "lifecycle" }
 lifecycle-runtime      = { module = "androidx.lifecycle:lifecycle-runtime-ktx",          version.ref = "lifecycle" }

@@ -18,8 +18,27 @@ actual class AudioPlayer(private val context: Context) {
             .setId("MusicOrbitSession")
             .build()
 
+    /**
+     * Exposes the singleton [MediaSession] so [com.musicorbit.android.service.MusicService]
+     * can publish it via MediaSessionService.onGetSession(). This is what enables the system
+     * media notification and background playback. There is exactly ONE session for the whole app.
+     */
+    fun getMediaSession(): MediaSession = mediaSession
+
     /** Exposed so EqualizerEngine can bind to the correct audio session. */
     val audioSessionId: Int get() = exoPlayer.audioSessionId
+
+    actual fun setQueue(items: List<Pair<String, Long>>, startIndex: Int) {
+        val mediaItems = items.map { (filePath, songId) ->
+            MediaItem.Builder()
+                .setMediaId(songId.toString())
+                .setUri(Uri.parse(filePath))
+                .build()
+        }
+        exoPlayer.setMediaItems(mediaItems, startIndex.coerceIn(0, mediaItems.size - 1), 0L)
+        exoPlayer.prepare()
+        exoPlayer.play()
+    }
 
     actual fun playSong(filePath: String, songId: Long) {
         val mediaItem = MediaItem.Builder()
@@ -36,8 +55,9 @@ actual class AudioPlayer(private val context: Context) {
     actual fun stop()   { exoPlayer.stop(); exoPlayer.seekTo(0) }
 
     actual fun seekTo(positionMs: Long) { exoPlayer.seekTo(positionMs) }
-    actual fun skipNext()               { exoPlayer.seekToNextMediaItem() }
-    actual fun skipPrevious()           { exoPlayer.seekToPreviousMediaItem() }
+    actual fun skipNext()     { exoPlayer.seekToNext(); if (exoPlayer.currentMediaItem != null) exoPlayer.play() }
+    actual fun skipPrevious() { exoPlayer.seekToPrevious(); if (exoPlayer.currentMediaItem != null) exoPlayer.play() }
+    actual fun getCurrentQueueIndex(): Int = exoPlayer.currentMediaItemIndex
 
     actual fun setPlayMode(mode: PlayMode) {
         when (mode) {
@@ -50,7 +70,7 @@ actual class AudioPlayer(private val context: Context) {
                 exoPlayer.shuffleModeEnabled = false
             }
             PlayMode.SHUFFLE -> {
-                exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
+                exoPlayer.repeatMode = Player.REPEAT_MODE_ALL
                 exoPlayer.shuffleModeEnabled = true
             }
         }

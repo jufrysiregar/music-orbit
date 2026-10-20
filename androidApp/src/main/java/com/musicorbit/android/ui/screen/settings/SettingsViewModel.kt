@@ -17,11 +17,18 @@ class SettingsViewModel(
     val sleepTimerMinutes = preferencesRepository.getSleepTimerMinutes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    val language = preferencesRepository.getLanguage()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "id")
+
     fun saveTheme(theme: String) {
         viewModelScope.launch { preferencesRepository.saveTheme(theme) }
     }
 
     fun saveSleepTimer(minutes: Int) {
         viewModelScope.launch { preferencesRepository.saveSleepTimerMinutes(minutes) }
+    }
+
+    fun saveLanguage(lang: String) {
+        viewModelScope.launch { preferencesRepository.saveLanguage(lang) }
     }
 }

@@ -1,5 +1,6 @@
 package com.musicorbit.platform
 
+import com.musicorbit.domain.model.Lyrics
 import com.musicorbit.domain.model.SongData
 
 /**
@@ -9,4 +10,5 @@ import com.musicorbit.domain.model.SongData
  */
 actual class MusicScanner {
     actual suspend fun scanAudioFiles(): List<SongData> = emptyList() // TODO: UIDocumentPicker
+    actual suspend fun scanLyricsForSongs(songs: List<SongData>): List<Lyrics> = emptyList()
 }

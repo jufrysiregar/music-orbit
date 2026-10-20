@@ -38,4 +38,9 @@ interface PreferencesRepository {
     // JSON array string e.g. "[0,-200,300,200,-100]"
     fun getEqualizerBands(): Flow<String>
     suspend fun saveEqualizerBands(bandsJson: String)
+
+    // ── Language ───────────────────────────────────────────────────────────
+    // Values: "id" | "en"
+    fun getLanguage(): Flow<String>
+    suspend fun saveLanguage(lang: String)
 }

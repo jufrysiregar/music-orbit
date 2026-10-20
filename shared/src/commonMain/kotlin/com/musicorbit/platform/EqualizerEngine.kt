@@ -12,6 +12,7 @@ expect class EqualizerEngine {
     fun initialize(audioSessionId: Int)
     fun getBandLevels(): List<Int>
     fun getBandFrequencies(): List<Int>
+    fun getLevelRange(): Pair<Int, Int>
     fun setBandLevel(bandIndex: Int, levelMilliDb: Int)
     fun applyPreset(presetName: String)
     fun setEnabled(enabled: Boolean)

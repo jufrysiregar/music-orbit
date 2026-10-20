@@ -45,6 +45,11 @@ class HomeViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    init {
+        // Auto-scan on first launch so the list is populated immediately
+        viewModelScope.launch { scanMusicUseCase() }
+    }
+
     fun onSearchQueryChange(query: String) { _searchQuery.value = query }
 
     fun onSortOrderChange(order: SortOrder) {

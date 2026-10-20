@@ -19,27 +19,37 @@ class EqualizerViewModel(
         val isEnabled: Boolean = false,
         val selectedPreset: String = "Normal",
         val bandLevels: List<Int> = emptyList(),
-        val bandFrequencies: List<Int> = emptyList()
+        val bandFrequencies: List<Int> = emptyList(),
+        val minLevel: Int = -1500,
+        val maxLevel: Int = 1500
     )
 
-    val presets = listOf("Normal", "Pop", "Rock", "Jazz", "Classical")
+    val presets = listOf("Normal", "Pop", "Rock", "Jazz", "Classical", "Dance", "Hip-Hop", "Vocal", "Acoustic", "Electronic")
 
     private val _state = MutableStateFlow(EqualizerState())
     val state: StateFlow<EqualizerState> = _state.asStateFlow()
 
     fun initialize(audioSessionId: Int) {
         equalizerEngine.initialize(audioSessionId)
+        val range = equalizerEngine.getLevelRange()
         _state.update {
             it.copy(
                 bandLevels      = equalizerEngine.getBandLevels(),
-                bandFrequencies = equalizerEngine.getBandFrequencies()
+                bandFrequencies = equalizerEngine.getBandFrequencies(),
+                minLevel        = range.first,
+                maxLevel        = range.second
             )
         }
     }
 
     fun onPresetSelected(preset: String) {
         equalizerEngine.applyPreset(preset)
-        _state.update { it.copy(selectedPreset = preset) }
+        _state.update {
+            it.copy(
+                selectedPreset = preset,
+                bandLevels     = equalizerEngine.getBandLevels()
+            )
+        }
         viewModelScope.launch { preferencesRepository.saveEqualizerPreset(preset) }
     }
 

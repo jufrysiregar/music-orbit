@@ -22,7 +22,6 @@ private object Keys {
     const val EQUALIZER_BANDS     = "eq_bands"
     const val EQUALIZER_ENABLED   = "eq_enabled"
 }
-
 @OptIn(ExperimentalSettingsApi::class)
 class PreferencesRepositoryImpl(
     private val settings: ObservableSettings
@@ -102,5 +101,14 @@ class PreferencesRepositoryImpl(
 
     override suspend fun saveEqualizerBands(bandsJson: String) {
         settings.putString(Keys.EQUALIZER_BANDS, bandsJson)
+    }
+
+    // ── Language ──────────────────────────────────────────────────────────
+
+    override fun getLanguage(): Flow<String> =
+        settings.getStringFlow(Keys.LANGUAGE, "id")
+
+    override suspend fun saveLanguage(lang: String) {
+        settings.putString(Keys.LANGUAGE, lang)
     }
 }

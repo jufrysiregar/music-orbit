@@ -8,6 +8,7 @@ import com.musicorbit.domain.model.PlayMode
  * iOS actual:     AVFoundation (stub)
  */
 expect class AudioPlayer {
+    fun setQueue(items: List<Pair<String, Long>>, startIndex: Int)
     fun playSong(filePath: String, songId: Long)
     fun pause()
     fun resume()
@@ -15,6 +16,7 @@ expect class AudioPlayer {
     fun seekTo(positionMs: Long)
     fun skipNext()
     fun skipPrevious()
+    fun getCurrentQueueIndex(): Int
     fun setPlayMode(mode: PlayMode)
     fun getCurrentPosition(): Long
     fun getDuration(): Long

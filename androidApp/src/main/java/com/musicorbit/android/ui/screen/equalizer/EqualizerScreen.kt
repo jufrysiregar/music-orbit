@@ -1,7 +1,9 @@
 package com.musicorbit.android.ui.screen.equalizer
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -9,100 +11,133 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.musicorbit.android.ui.components.GlassCard
+import com.musicorbit.android.ui.components.OrbitBackground
+import com.musicorbit.android.ui.screen.player.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EqualizerScreen(
     viewModel: EqualizerViewModel,
+    playerViewModel: PlayerViewModel,
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Equalizer") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+    LaunchedEffect(Unit) {
+        viewModel.initialize(playerViewModel.audioSessionId)
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        OrbitBackground()
+
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                    title  = { Text("Equalizer") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Enable toggle
+                GlassCard(shape = RoundedCornerShape(20.dp), contentPadding = 14.dp) {
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Text("Aktifkan Equalizer", style = MaterialTheme.typography.titleMedium)
+                        Switch(
+                            checked         = state.isEnabled,
+                            onCheckedChange = viewModel::onEnabledChanged
+                        )
                     }
                 }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Enable / Disable toggle
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Text("Aktifkan Equalizer", style = MaterialTheme.typography.titleMedium)
-                Switch(
-                    checked         = state.isEnabled,
-                    onCheckedChange = viewModel::onEnabledChanged
-                )
-            }
 
-            HorizontalDivider()
-
-            // Preset chips
-            Text("Preset", style = MaterialTheme.typography.labelLarge)
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                viewModel.presets.forEach { preset ->
-                    FilterChip(
-                        selected = preset == state.selectedPreset,
-                        onClick  = { viewModel.onPresetSelected(preset) },
-                        label    = { Text(preset) },
-                        enabled  = state.isEnabled
-                    )
+                // Preset chips
+                GlassCard(shape = RoundedCornerShape(20.dp), contentPadding = 14.dp) {
+                    Column {
+                        Text("Preset", style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.height(10.dp))
+                        Row(
+                            modifier              = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            viewModel.presets.forEach { preset ->
+                                FilterChip(
+                                    selected  = preset == state.selectedPreset,
+                                    onClick   = { viewModel.onPresetSelected(preset) },
+                                    label     = { Text(preset) },
+                                    enabled   = state.isEnabled,
+                                    shape     = RoundedCornerShape(14.dp)
+                                )
+                            }
+                        }
+                    }
                 }
-            }
 
-            HorizontalDivider()
-
-            // Band sliders
-            if (state.bandLevels.isEmpty()) {
-                Text(
-                    text  = "Equalizer tidak tersedia untuk sesi audio ini.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Text("Band Frekuensi", style = MaterialTheme.typography.labelLarge)
-                state.bandLevels.forEachIndexed { index, level ->
-                    val freqLabel = if (index < state.bandFrequencies.size)
-                        "${state.bandFrequencies[index]} Hz" else "Band ${index + 1}"
-
-                    Row(
-                        modifier          = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                // Band sliders
+                if (state.bandLevels.isEmpty()) {
+                    GlassCard(shape = RoundedCornerShape(20.dp), contentPadding = 16.dp) {
                         Text(
-                            text     = freqLabel,
-                            style    = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.width(64.dp)
+                            text  = "Equalizer tidak tersedia. Putar lagu terlebih dahulu.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Slider(
-                            value             = level.toFloat(),
-                            onValueChange     = { viewModel.onBandLevelChange(index, it.toInt()) },
-                            valueRange        = -1500f..1500f,
-                            steps             = 0,
-                            enabled           = state.isEnabled,
-                            modifier          = Modifier.weight(1f)
-                        )
+                    }
+                } else {
+                    GlassCard(shape = RoundedCornerShape(20.dp), contentPadding = 16.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Band Frekuensi", style = MaterialTheme.typography.labelLarge)
+                            Spacer(Modifier.height(6.dp))
+                            state.bandLevels.forEachIndexed { index, level ->
+                                val freqLabel = if (index < state.bandFrequencies.size) {
+                                    val freq = state.bandFrequencies[index]
+                                    if (freq >= 1000) "${freq / 1000} kHz" else "$freq Hz"
+                                } else "Band ${index + 1}"
+
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
+                                        modifier              = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment     = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = freqLabel, style = MaterialTheme.typography.labelMedium)
+                                        Text(
+                                            text  = "${level / 100} dB",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    Slider(
+                                        value         = level.toFloat(),
+                                        onValueChange = { viewModel.onBandLevelChange(index, it.toInt()) },
+                                        valueRange    = state.minLevel.toFloat()..state.maxLevel.toFloat(),
+                                        enabled       = state.isEnabled,
+                                        modifier      = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

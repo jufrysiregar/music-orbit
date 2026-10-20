@@ -41,10 +41,10 @@ dependencies {
     // Shared KMP module
     implementation(project(":shared"))
 
-    // SQLDelight Android driver (needed for AndroidSqliteDriver in DI)
+    // SQLDelight Android driver (needed for AndroidSqliteDriver in AndroidModule.kt)
     implementation(libs.sqldelight.android)
 
-    // Multiplatform Settings (needed for SharedPreferencesSettings in DI)
+    // Multiplatform Settings (needed for SharedPreferencesSettings in AndroidModule.kt)
     implementation(libs.multiplatform.settings)
 
     // Compose BOM
@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.icons.extended)
+    implementation(libs.compose.google.fonts)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 

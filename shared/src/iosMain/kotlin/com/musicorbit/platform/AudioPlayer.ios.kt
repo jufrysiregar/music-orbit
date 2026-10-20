@@ -7,6 +7,7 @@ import com.musicorbit.domain.model.PlayMode
  * All methods are no-ops; isPlaying() always returns false.
  */
 actual class AudioPlayer {
+    actual fun setQueue(items: List<Pair<String, Long>>, startIndex: Int) {}
     actual fun playSong(filePath: String, songId: Long) { /* TODO: AVPlayer */ }
     actual fun pause()   {}
     actual fun resume()  {}
@@ -14,6 +15,7 @@ actual class AudioPlayer {
     actual fun seekTo(positionMs: Long) {}
     actual fun skipNext()     {}
     actual fun skipPrevious() {}
+    actual fun getCurrentQueueIndex(): Int = 0
     actual fun setPlayMode(mode: PlayMode) {}
     actual fun getCurrentPosition(): Long = 0L
     actual fun getDuration(): Long        = 0L
