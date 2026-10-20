@@ -40,6 +40,8 @@ import com.musicorbit.android.ui.components.AlbumArtImage
 import com.musicorbit.android.ui.components.GlassCard
 import com.musicorbit.android.ui.components.OrbitBackground
 import com.musicorbit.android.ui.components.SeekBarSection
+import com.musicorbit.android.i18n.AppStrings
+import com.musicorbit.android.i18n.LocalStrings
 import com.musicorbit.android.ui.navigation.OrbitKeys
 import com.musicorbit.android.ui.navigation.orbitSharedElement
 import com.musicorbit.android.ui.theme.OrbitViolet
@@ -59,6 +61,7 @@ fun MainPlayerScreen(
     val state          by viewModel.playbackState.collectAsStateWithLifecycle()
     val sleepRemaining by viewModel.sleepTimerRemaining.collectAsStateWithLifecycle()
     var showEditDialog by remember { mutableStateOf(false) }
+    val strings        = LocalStrings.current
 
     BackHandler { onNavigateToHome() }
 
@@ -77,14 +80,14 @@ fun MainPlayerScreen(
                             val secs = ((r % 60_000L) / 1_000L).toInt()
                             AssistChip(
                                 onClick     = viewModel::cancelSleepTimer,
-                                label       = { Text("Tidur: $mins:${secs.toString().padStart(2, '0')}", style = MaterialTheme.typography.labelSmall) },
+                                label       = { Text("${strings.sleepLabel}: $mins:${secs.toString().padStart(2, '0')}", style = MaterialTheme.typography.labelSmall) },
                                 leadingIcon = { Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(16.dp)) }
                             )
                         }
                     },
                     navigationIcon = {
                         IconButton(onClick = onNavigateToHome) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali ke Daftar Lagu")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back)
                         }
                     }
                 )
@@ -125,7 +128,7 @@ fun MainPlayerScreen(
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text     = state.currentSong?.title ?: "Tidak ada lagu",
+                            text     = state.currentSong?.title ?: strings.noSong,
                             style    = MaterialTheme.typography.headlineSmall,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -166,7 +169,7 @@ fun MainPlayerScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    ControlIcon(Icons.Default.SkipPrevious, "Sebelumnya", size = 40.dp) { viewModel.skipPrevious() }
+                    ControlIcon(Icons.Default.SkipPrevious, strings.previous, size = 32.dp) { viewModel.skipPrevious() }
 
                     Box(
                         modifier = Modifier
@@ -187,15 +190,17 @@ fun MainPlayerScreen(
                         ) { playing ->
                             Icon(
                                 imageVector        = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (playing) "Jeda" else "Putar",
+                                contentDescription = if (playing) strings.pause else strings.play,
                                 tint               = Color.White,
                                 modifier           = Modifier.size(40.dp)
                             )
                         }
                     }
 
-                    ControlIcon(Icons.Default.SkipNext, "Berikutnya", size = 40.dp) { viewModel.skipNext() }
+                    ControlIcon(Icons.Default.SkipNext, strings.next, size = 32.dp) { viewModel.skipNext() }
                 }
+
+                Spacer(Modifier.height(12.dp))
 
                 // ── Secondary controls ─────────────────────────────────────────
                 Row(
@@ -203,7 +208,7 @@ fun MainPlayerScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    ControlIcon(Icons.Default.Tune, "Equalizer") { onNavigateToEqualizer() }
+                    ControlIcon(Icons.Default.Tune, strings.equalizer) { onNavigateToEqualizer() }
 
                     FilledTonalButton(
                         onClick = { state.currentSong?.id?.let { onNavigateToLyrics(it) } },
@@ -211,17 +216,42 @@ fun MainPlayerScreen(
                     ) {
                         Icon(Icons.Default.Lyrics, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Lirik")
+                        Text(strings.lyrics)
                     }
 
-                    ControlIcon(
-                        icon = when (state.playMode) {
-                            PlayMode.REPEAT_ONE -> Icons.Default.RepeatOne
-                            PlayMode.SHUFFLE    -> Icons.Default.Shuffle
-                            PlayMode.SEQUENTIAL -> Icons.Default.Repeat
-                        },
-                        description = "Mode: ${state.playMode.name}"
-                    ) { viewModel.cyclePlayMode() }
+                    // Play-mode chip: tap cycles Sequential → Shuffle → Repeat One and applies it live.
+                    val (modeIcon, modeText) = when (state.playMode) {
+                        PlayMode.REPEAT_ONE -> Icons.Default.RepeatOne to strings.modeRepeatOne
+                        PlayMode.SHUFFLE    -> Icons.Default.Shuffle to strings.modeShuffle
+                        PlayMode.SEQUENTIAL -> Icons.Default.Repeat to strings.modeSequential
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier          = Modifier
+                            .clip(CircleShape)
+                            .background(
+                                if (state.playMode == PlayMode.SEQUENTIAL)
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                else
+                                    OrbitViolet.copy(alpha = 0.22f)
+                            )
+                            .pressableSpring(onClick = viewModel::cyclePlayMode)
+                    ) {
+                        Icon(
+                            modeIcon,
+                            contentDescription = "${strings.modePrefix}: $modeText",
+                            tint               = if (state.playMode == PlayMode.SEQUENTIAL)
+                                MaterialTheme.colorScheme.onSurface else OrbitViolet,
+                            modifier           = Modifier.padding(start = 12.dp).size(22.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            modeText,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(end = 14.dp)
+                        )
+                    }
                 }
             }
         }
@@ -251,10 +281,16 @@ private fun ControlIcon(
         modifier = Modifier
             .size(56.dp)
             .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             .pressableSpring(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = description, modifier = Modifier.size(size))
+        Icon(
+            icon,
+            contentDescription = description,
+            tint               = MaterialTheme.colorScheme.onSurface,
+            modifier           = Modifier.size(size)
+        )
     }
 }
 
@@ -270,6 +306,7 @@ private fun EditSongBottomSheet(
     var artist     by remember { mutableStateOf(song.artist) }
     var albumArt   by remember { mutableStateOf(song.albumArtUri) }
     val context    = LocalContext.current
+    val strings    = LocalStrings.current
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -300,7 +337,7 @@ private fun EditSongBottomSheet(
             Spacer(Modifier.height(20.dp))
 
             Text(
-                text     = "Edit Informasi Lagu",
+                text     = strings.editInfoTitle,
                 style    = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -343,7 +380,7 @@ private fun EditSongBottomSheet(
                 ) {
                     Icon(
                         Icons.Default.AddPhotoAlternate,
-                        contentDescription = "Ganti foto",
+                        contentDescription = strings.changePhoto,
                         modifier           = Modifier.size(16.dp),
                         tint               = MaterialTheme.colorScheme.onPrimary
                     )
@@ -354,7 +391,7 @@ private fun EditSongBottomSheet(
             OutlinedTextField(
                 value         = title,
                 onValueChange = { title = it },
-                label         = { Text("Judul Lagu") },
+                label         = { Text(strings.songTitleLabel) },
                 leadingIcon   = { Icon(Icons.Default.Audiotrack, contentDescription = null) },
                 singleLine    = true,
                 shape         = RoundedCornerShape(14.dp),
@@ -369,7 +406,7 @@ private fun EditSongBottomSheet(
             OutlinedTextField(
                 value         = artist,
                 onValueChange = { artist = it },
-                label         = { Text("Artis / Penyanyi") },
+                label         = { Text(strings.artistLabel) },
                 leadingIcon   = { Icon(Icons.Default.Person, contentDescription = null) },
                 singleLine    = true,
                 shape         = RoundedCornerShape(14.dp),
@@ -389,7 +426,7 @@ private fun EditSongBottomSheet(
                     onClick  = onDismiss,
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape    = RoundedCornerShape(14.dp)
-                ) { Text("Batal") }
+                ) { Text(strings.cancel) }
 
                 Button(
                     onClick  = {
@@ -407,7 +444,7 @@ private fun EditSongBottomSheet(
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Simpan")
+                    Text(strings.save)
                 }
             }
         }

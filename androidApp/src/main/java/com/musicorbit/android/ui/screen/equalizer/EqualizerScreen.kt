@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.musicorbit.android.i18n.LocalStrings
 import com.musicorbit.android.ui.components.GlassCard
 import com.musicorbit.android.ui.components.OrbitBackground
 import com.musicorbit.android.ui.screen.player.PlayerViewModel
@@ -26,6 +27,7 @@ fun EqualizerScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val strings = LocalStrings.current
 
     LaunchedEffect(Unit) {
         viewModel.initialize(playerViewModel.audioSessionId)
@@ -39,10 +41,10 @@ fun EqualizerScreen(
             topBar = {
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                    title  = { Text("Equalizer") },
+                    title  = { Text(strings.equalizer) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back)
                         }
                     }
                 )
@@ -63,7 +65,7 @@ fun EqualizerScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment     = Alignment.CenterVertically
                     ) {
-                        Text("Aktifkan Equalizer", style = MaterialTheme.typography.titleMedium)
+                        Text(strings.enableEqualizer, style = MaterialTheme.typography.titleMedium)
                         Switch(
                             checked         = state.isEnabled,
                             onCheckedChange = viewModel::onEnabledChanged
@@ -74,7 +76,7 @@ fun EqualizerScreen(
                 // Preset chips
                 GlassCard(shape = RoundedCornerShape(20.dp), contentPadding = 14.dp) {
                     Column {
-                        Text("Preset", style = MaterialTheme.typography.labelLarge)
+                        Text(strings.preset, style = MaterialTheme.typography.labelLarge)
                         Spacer(Modifier.height(10.dp))
                         Row(
                             modifier              = Modifier
@@ -99,7 +101,7 @@ fun EqualizerScreen(
                 if (state.bandLevels.isEmpty()) {
                     GlassCard(shape = RoundedCornerShape(20.dp), contentPadding = 16.dp) {
                         Text(
-                            text  = "Equalizer tidak tersedia. Putar lagu terlebih dahulu.",
+                            text  = strings.eqUnavailable,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -107,13 +109,13 @@ fun EqualizerScreen(
                 } else {
                     GlassCard(shape = RoundedCornerShape(20.dp), contentPadding = 16.dp) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Band Frekuensi", style = MaterialTheme.typography.labelLarge)
+                            Text(strings.bandFrequencies, style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.height(6.dp))
                             state.bandLevels.forEachIndexed { index, level ->
                                 val freqLabel = if (index < state.bandFrequencies.size) {
                                     val freq = state.bandFrequencies[index]
                                     if (freq >= 1000) "${freq / 1000} kHz" else "$freq Hz"
-                                } else "Band ${index + 1}"
+                                } else "${strings.bandWord} ${index + 1}"
 
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     Row(

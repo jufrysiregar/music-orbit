@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,13 +22,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -38,8 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.musicorbit.android.R
+import com.musicorbit.android.i18n.LocalStrings
 import com.musicorbit.android.ui.components.AlbumArtImage
-import com.musicorbit.android.ui.components.GlassCard
 import com.musicorbit.android.ui.components.LyricsBadge
 import com.musicorbit.android.ui.components.MiniPlayer
 import com.musicorbit.android.ui.components.OrbitBackground
@@ -60,6 +59,7 @@ fun HomeScreen(
     onSongClick: (Song) -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
+    val strings       = LocalStrings.current
     val songs         by viewModel.songs.collectAsStateWithLifecycle()
     val playbackState by playerViewModel.playbackState.collectAsStateWithLifecycle()
     val searchQuery   by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -80,14 +80,7 @@ fun HomeScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
+                        .background(MaterialTheme.colorScheme.background)
                         .statusBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
@@ -121,22 +114,22 @@ fun HomeScreen(
                                 )
                             )
                             Text(
-                                text  = "Musikmu, orbitmu",
+                                text  = strings.tagline,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Spacer(Modifier.weight(1f))
-                        IconToggle(Icons.Default.Search, "Cari") { showSearch = true }
+                        IconToggle(Icons.Default.Search, strings.search) { showSearch = true }
                         Box {
-                            IconToggle(Icons.Default.Sort, "Urutkan") { showSortMenu = true }
+                            IconToggle(Icons.Default.Sort, strings.sort) { showSortMenu = true }
                             DropdownMenu(
                                 expanded         = showSortMenu,
                                 onDismissRequest = { showSortMenu = false }
                             ) {
                                 SortOrder.entries.forEach { order ->
                                     DropdownMenuItem(
-                                        text      = { Text(order.toLabel()) },
+                                        text      = { Text(order.toLabel(strings)) },
                                         onClick   = {
                                             viewModel.onSortOrderChange(order)
                                             showSortMenu = false
@@ -148,7 +141,7 @@ fun HomeScreen(
                                 }
                             }
                         }
-                        IconToggle(Icons.Default.Settings, "Pengaturan") { onNavigateToSettings() }
+                        IconToggle(Icons.Default.Settings, strings.settings) { onNavigateToSettings() }
                     }
 
                     // ── Expanding search ─────────────────────────────────────
@@ -166,12 +159,12 @@ fun HomeScreen(
                             OutlinedTextField(
                                 value           = searchQuery,
                                 onValueChange   = viewModel::onSearchQueryChange,
-                                placeholder     = { Text("Cari lagu atau artis...") },
+                                placeholder     = { Text(strings.searchHint) },
                                 leadingIcon     = { Icon(Icons.Default.Search, contentDescription = null) },
                                 trailingIcon    = {
                                     if (searchQuery.isNotEmpty()) {
                                         IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                            Icon(Icons.Default.Clear, contentDescription = "Hapus")
+                                            Icon(Icons.Default.Clear, contentDescription = strings.clear)
                                         }
                                     }
                                 },
@@ -194,7 +187,7 @@ fun HomeScreen(
                                 viewModel.onSearchQueryChange("")
                                 keyboardController?.hide()
                             }) {
-                                Icon(Icons.Default.Close, contentDescription = "Tutup pencarian")
+                                Icon(Icons.Default.Close, contentDescription = strings.closeSearch)
                             }
                         }
                     }
@@ -215,32 +208,25 @@ fun HomeScreen(
                         modifier         = Modifier.fillMaxSize().padding(innerPadding),
                         contentAlignment = Alignment.Center
                     ) {
-                        GlassCard(modifier = Modifier.padding(24.dp), glow = true) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier            = Modifier.padding(8.dp)
-                            ) {
-                                Text("Tidak ada musik ditemukan", style = MaterialTheme.typography.titleMedium)
-                                Spacer(Modifier.height(12.dp))
-                                Button(onClick = { viewModel.triggerScan() }) { Text("Pindai Ulang") }
-                            }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(strings.noSongs, style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(12.dp))
+                            Button(onClick = { viewModel.triggerScan() }) { Text(strings.rescan) }
                         }
                     }
                 } else {
                     LazyColumn(
                         modifier      = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            top    = innerPadding.calculateTopPadding() + 8.dp,
-                            bottom = 100.dp + innerPadding.calculateBottomPadding(),
+                            top    = innerPadding.calculateTopPadding() + 4.dp,
+                            bottom = 108.dp + innerPadding.calculateBottomPadding(),
                             start  = 12.dp,
                             end    = 12.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        )
                     ) {
-                        itemsIndexed(songs, key = { _, s -> s.id }) { index, song ->
+                        itemsIndexed(songs, key = { _, s -> s.id }) { _, song ->
                             SongRow(
                                 song    = song,
-                                stagger = index.coerceAtMost(10),
                                 onClick = {
                                     playerViewModel.playFromQueue(songs, songs.indexOf(song))
                                     onSongClick(song)
@@ -250,7 +236,7 @@ fun HomeScreen(
                     }
                 }
 
-                // Floating MiniPlayer overlay
+                // Floating MiniPlayer overlay with a clear separator on top.
                 AnimatedVisibility(
                     visible = playbackState.currentSong != null,
                     enter   = fadeIn() + slideInVertically { it },
@@ -258,14 +244,23 @@ fun HomeScreen(
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
                     playbackState.currentSong?.let { song ->
-                        MiniPlayer(
-                            song              = song,
-                            isPlaying         = playbackState.isPlaying,
-                            onTogglePlayPause = playerViewModel::togglePlayPause,
-                            onNext            = playerViewModel::skipNext,
-                            onClick           = { onSongClick(song) },
-                            modifier          = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
-                        )
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            )
+                            MiniPlayer(
+                                song              = song,
+                                isPlaying         = playbackState.isPlaying,
+                                onTogglePlayPause = playerViewModel::togglePlayPause,
+                                onPrevious        = playerViewModel::skipPrevious,
+                                onNext            = playerViewModel::skipNext,
+                                onClick           = { onSongClick(song) },
+                                modifier          = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+                                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -286,69 +281,56 @@ private fun IconToggle(icon: androidx.compose.ui.graphics.vector.ImageVector, de
     }
 }
 
+/** Simple, unboxed song row — no card, no entrance animation, just a clean tappable line. */
 @Composable
-private fun SongRow(song: Song, stagger: Int, onClick: () -> Unit) {
-    var appear by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(stagger * 45L)
-        appear = true
-    }
-
-    GlassCard(
+private fun SongRow(song: Song, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                alpha = if (appear) 1f else 0f
-                translationY = if (appear) 0f else 40f
-            }
-            .pressableSpring(onClick = onClick),
-        shape    = RoundedCornerShape(20.dp),
-        contentPadding = 8.dp
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier          = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AlbumArtImage(
-                uri      = song.albumArtUri,
-                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp))
+        AlbumArtImage(
+            uri      = song.albumArtUri,
+            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp))
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text     = song.title,
+                style    = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (song.hasLyrics) {
+                    LyricsBadge()
+                    Spacer(Modifier.width(6.dp))
+                }
                 Text(
-                    text     = song.title,
-                    style    = MaterialTheme.typography.titleMedium,
+                    text     = song.artist,
+                    style    = MaterialTheme.typography.bodySmall,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (song.hasLyrics) {
-                        LyricsBadge()
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Text(
-                        text     = song.artist,
-                        style    = MaterialTheme.typography.bodySmall,
-                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
         }
     }
+    HorizontalDivider(
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)
+    )
 }
 
 private fun auroraOverlay() = Brush.linearGradient(
     listOf(OrbitViolet.copy(alpha = 0.35f), OrbitMagenta.copy(alpha = 0.25f))
 )
 
-private fun SortOrder.toLabel(): String = when (this) {
-    SortOrder.DATE_ADDED  -> "Terbaru"
-    SortOrder.PLAY_COUNT  -> "Paling sering diputar"
-    SortOrder.TITLE       -> "A - Z"
-    SortOrder.ARTIST      -> "Artis"
+private fun SortOrder.toLabel(strings: com.musicorbit.android.i18n.AppStrings): String = when (this) {
+    SortOrder.DATE_ADDED  -> strings.sortNewest
+    SortOrder.PLAY_COUNT  -> strings.sortMostPlayed
+    SortOrder.TITLE       -> strings.sortTitleAz
+    SortOrder.ARTIST      -> strings.sortArtist
 }

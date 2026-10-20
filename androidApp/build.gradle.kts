@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.musicorbit.android"
-        minSdk        = 24
+        minSdk        = 26
         targetSdk     = 35
         versionCode   = 1
         versionName   = "1.0.0"
@@ -82,6 +82,11 @@ dependencies {
 
     // Accompanist
     implementation(libs.accompanist.permissions)
+
+    // Glance (home-screen music widget)
+    implementation(libs.glance)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 
     // Testing
     testImplementation(libs.junit)

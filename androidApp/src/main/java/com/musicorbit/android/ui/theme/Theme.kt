@@ -13,6 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import com.musicorbit.domain.repository.PreferencesRepository
+import com.musicorbit.android.i18n.EnglishStrings
+import com.musicorbit.android.i18n.IndonesianStrings
+import com.musicorbit.android.i18n.LocalStrings
 import org.koin.compose.koinInject
 
 /** CompositionLocal telling descendants whether the deep-space (dark) variant is active. */
@@ -79,6 +82,8 @@ fun MusicOrbitTheme(
     val preferences: PreferencesRepository = koinInject()
     val theme by preferences.getTheme()
         .collectAsState(initial = "SYSTEM")
+    val language by preferences.getLanguage()
+        .collectAsState(initial = "id")
 
     val darkTheme = when (theme) {
         "LIGHT" -> false
@@ -88,9 +93,11 @@ fun MusicOrbitTheme(
 
     // Brand consistency takes priority over Material You dynamic color.
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val strings     = if (language == "en") EnglishStrings else IndonesianStrings
 
     androidx.compose.runtime.CompositionLocalProvider(
-        LocalOrbitDark provides darkTheme
+        LocalOrbitDark provides darkTheme,
+        LocalStrings   provides strings
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

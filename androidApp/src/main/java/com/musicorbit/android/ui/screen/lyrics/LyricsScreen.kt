@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.musicorbit.android.i18n.LocalStrings
 import com.musicorbit.android.ui.components.GlassCard
 import com.musicorbit.android.ui.components.OrbitBackground
 import org.koin.androidx.compose.koinViewModel
@@ -28,6 +29,7 @@ fun LyricsScreen(
     viewModel: LyricsViewModel = koinViewModel()
 ) {
     val context   = LocalContext.current
+    val strings   = LocalStrings.current
     val lyrics    by viewModel.lyrics.collectAsStateWithLifecycle()
     val inputText by viewModel.inputText.collectAsStateWithLifecycle()
     val song      by viewModel.song.collectAsStateWithLifecycle()
@@ -42,17 +44,17 @@ fun LyricsScreen(
             topBar = {
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                    title  = { Text(song?.title ?: "Lirik") },
+                    title  = { Text(song?.title ?: strings.lyrics) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back)
                         }
                     },
                     actions = {
                         IconButton(onClick = {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(viewModel.buildSearchUrl())))
                         }) {
-                            Icon(Icons.Default.Search, contentDescription = "Cari Lirik di Google")
+                            Icon(Icons.Default.Search, contentDescription = strings.searchLyricsGoogle)
                         }
                     }
                 )
@@ -74,10 +76,10 @@ fun LyricsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    Text("Edit atau tempel lirik baru:", style = MaterialTheme.typography.labelMedium)
+                    Text(strings.editOrPaste, style = MaterialTheme.typography.labelMedium)
                 } else {
                     Text(
-                        text  = "Belum ada lirik. Cari di Google lalu tempel di bawah.",
+                        text  = strings.noLyricsHint,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -86,8 +88,8 @@ fun LyricsScreen(
                 OutlinedTextField(
                     value        = inputText,
                     onValueChange = viewModel::onInputTextChange,
-                    label        = { Text("Tempel lirik di sini...") },
-                    placeholder  = { Text("Salin lirik dari browser, lalu tempel di sini") },
+                    label        = { Text(strings.pasteHere) },
+                    placeholder  = { Text(strings.pastePlaceholder) },
                     shape        = RoundedCornerShape(18.dp),
                     modifier     = Modifier
                         .fillMaxWidth()
@@ -108,7 +110,7 @@ fun LyricsScreen(
                     ) {
                         Icon(Icons.Default.Search, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
-                        Text("Cari Lirik")
+                        Text(strings.searchLyrics)
                     }
 
                     Button(
@@ -117,7 +119,7 @@ fun LyricsScreen(
                         modifier = Modifier.weight(1f),
                         shape    = RoundedCornerShape(14.dp)
                     ) {
-                        Text("Simpan Lirik")
+                        Text(strings.saveLyrics)
                     }
                 }
             }

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.musicorbit.android.R
+import com.musicorbit.android.i18n.LocalStrings
 import com.musicorbit.android.ui.components.GlassCard
 import com.musicorbit.android.ui.components.OrbitBackground
 import com.musicorbit.android.ui.theme.OrbitCyan
@@ -35,6 +36,7 @@ import com.musicorbit.android.ui.util.pressableSpring
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val strings = LocalStrings.current
 
     fun openUrl(url: String) {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -48,10 +50,10 @@ fun AboutScreen(onBack: () -> Unit) {
             topBar = {
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                    title  = { Text("Tentang Aplikasi") },
+                    title  = { Text(strings.aboutTitle) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back)
                         }
                     }
                 )
@@ -97,7 +99,7 @@ fun AboutScreen(onBack: () -> Unit) {
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text  = "Versi 1.0.0",
+                            text  = strings.versionLabel,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

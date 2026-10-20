@@ -14,19 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.provider.Settings
-import java.util.Locale
+import com.musicorbit.android.i18n.LocalStrings
 import com.musicorbit.android.ui.components.GlassCard
 import com.musicorbit.android.ui.components.OrbitBackground
 import com.musicorbit.android.ui.util.pressableSpring
@@ -38,15 +29,20 @@ fun SettingsScreen(
     onNavigateToAbout: () -> Unit,
     viewModel: SettingsViewModel = koinViewModel()
 ) {
+    val strings      = LocalStrings.current
     val theme        by viewModel.theme.collectAsStateWithLifecycle()
     val sleepMinutes by viewModel.sleepTimerMinutes.collectAsStateWithLifecycle()
-    val language     by viewModel.language.collectAsStateWithLifecycle()
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showTimerDialog by remember { mutableStateOf(false) }
-    var showLangDialog  by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
+    val themeSubtitle = when (theme) {
+        "LIGHT" -> strings.themeLight
+        "DARK"  -> strings.themeDark
+        else    -> strings.themeSystem
+    }
+    val sleepSubtitle =
+        if (sleepMinutes == 0) strings.sleepOff else "$sleepMinutes ${strings.minutesUnit}"
 
     Box(modifier = Modifier.fillMaxSize()) {
         OrbitBackground()
@@ -56,10 +52,10 @@ fun SettingsScreen(
             topBar = {
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                    title  = { Text("Pengaturan") },
+                    title  = { Text(strings.settingsTitle) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back)
                         }
                     }
                 )
@@ -72,59 +68,29 @@ fun SettingsScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                SettingsItem(Icons.Default.Language, "Bahasa / Language",
-                    subtitle = when (language) { "en" -> "English"; else -> "Indonesia" },
-                    onClick  = { showLangDialog = true })
+                SettingsItem(Icons.Default.NightsStay, strings.sleepTimer,
+                    subtitle = sleepSubtitle,
+                    onClick  = { showTimerDialog = true })
 
-                SettingsItem(Icons.Default.NightsStay, "Pengaturan Waktu Tidur",
-                    subtitle = when (sleepMinutes) {
-                        0   -> "Tidak aktif"
-                        15  -> "15 menit"
-                        30  -> "30 menit"
-                        45  -> "45 menit"
-                        60  -> "1 jam"
-                        90  -> "1,5 jam"
-                        120 -> "2 jam"
-                        else -> "$sleepMinutes menit"
-                    },
-                    onClick = { showTimerDialog = true })
-
-                SettingsItem(Icons.Default.Palette, "Tema",
-                    subtitle = when (theme) { "LIGHT" -> "Terang"; "DARK" -> "Gelap"; else -> "Ikuti Sistem" },
+                SettingsItem(Icons.Default.Palette, strings.themeTitle,
+                    subtitle = themeSubtitle,
                     onClick  = { showThemeDialog = true })
 
-                SettingsItem(Icons.Default.Info, "Tentang Aplikasi", onClick = onNavigateToAbout)
-
-                // ── All-files access (Android 11+ only, for .lrc / .txt lyrics) ──
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    var hasAllFilesAccess by remember { mutableStateOf(Environment.isExternalStorageManager()) }
-                    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-                        hasAllFilesAccess = Environment.isExternalStorageManager()
-                    }
-                    SettingsItem(
-                        icon     = Icons.Default.FolderOpen,
-                        title    = "Izin Akses File Lirik",
-                        subtitle = if (hasAllFilesAccess)
-                            "Diberikan — file .lrc/.txt akan otomatis terdeteksi"
-                        else
-                            "Belum diberikan — diperlukan untuk baca file lirik di penyimpanan",
-                        onClick  = {
-                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                            intent.data = Uri.parse("package:${context.packageName}")
-                            try { context.startActivity(intent) } catch (_: Exception) {}
-                        }
-                    )
-                }
+                SettingsItem(Icons.Default.Info, strings.aboutApp, onClick = onNavigateToAbout)
             }
         }
     }
 
     // ── Theme dialog ──────────────────────────────────────────────────────────
     if (showThemeDialog) {
-        val options = listOf("LIGHT" to "Terang", "DARK" to "Gelap", "SYSTEM" to "Ikuti Sistem")
+        val options = listOf(
+            "LIGHT" to strings.themeLight,
+            "DARK"  to strings.themeDark,
+            "SYSTEM" to strings.themeSystem
+        )
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
-            title   = { Text("Pilih Tema") },
+            title   = { Text(strings.pickTheme) },
             text    = {
                 Column {
                     options.forEach { (value, label) ->
@@ -150,22 +116,21 @@ fun SettingsScreen(
 
     // ── Sleep timer dialog ────────────────────────────────────────────────────
     if (showTimerDialog) {
-        val options = listOf(
-            0 to "Tidak aktif", 15 to "15 menit", 30 to "30 menit", 45 to "45 menit",
-            60 to "1 jam", 90 to "1,5 jam", 120 to "2 jam"
-        )
+        val options = listOf(0, 15, 30, 45, 60, 90, 120)
         AlertDialog(
             onDismissRequest = { showTimerDialog = false },
-            title   = { Text("Waktu Tidur") },
+            title   = { Text(strings.sleepTitle) },
             text    = {
                 Column {
                     Text(
-                        "Musik akan berhenti otomatis setelah waktu yang dipilih.",
+                        strings.sleepDesc,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
-                    options.forEach { (value, label) ->
+                    options.forEach { value ->
+                        val label =
+                            if (value == 0) strings.sleepOff else "$value ${strings.minutesUnit}"
                         Row(
                             modifier          = Modifier.fillMaxWidth().clickable {
                                 viewModel.saveSleepTimer(value); showTimerDialog = false
@@ -177,40 +142,6 @@ fun SettingsScreen(
                             })
                             Spacer(Modifier.width(8.dp))
                             Text(label, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            },
-            confirmButton = {}
-        )
-    }
-
-    // ── Language dialog ──────────────────────────────────────────────────────
-    if (showLangDialog) {
-        val options = listOf("id" to "Bahasa Indonesia", "en" to "English")
-        AlertDialog(
-            onDismissRequest = { showLangDialog = false },
-            title   = { Text("Pilih Bahasa") },
-            text    = {
-                Column {
-                    options.forEach { (value, label) ->
-                        val applyLang = {
-                            viewModel.saveLanguage(value)
-                            val locale = Locale(value)
-                            Locale.setDefault(locale)
-                            val config = android.content.res.Configuration(context.resources.configuration)
-                            config.setLocale(locale)
-                            context.createConfigurationContext(config)
-                            (context as? Activity)?.recreate()
-                            showLangDialog = false
-                        }
-                        Row(
-                            modifier          = Modifier.fillMaxWidth().clickable(onClick = applyLang).padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = language == value, onClick = applyLang)
-                            Spacer(Modifier.width(8.dp))
-                            Text(label)
                         }
                     }
                 }

@@ -9,6 +9,7 @@ import com.musicorbit.domain.repository.PreferencesRepository
 import com.musicorbit.domain.repository.SongRepository
 import com.musicorbit.platform.AudioPlayer
 import com.musicorbit.platform.EqualizerEngine
+import com.musicorbit.android.widget.NowPlayingStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +24,8 @@ class PlayerViewModel(
     private val audioPlayer: AudioPlayer,
     private val songRepository: SongRepository,
     private val preferencesRepository: PreferencesRepository,
-    private val equalizerEngine: EqualizerEngine
+    private val equalizerEngine: EqualizerEngine,
+    private val nowPlayingStore: NowPlayingStore
 ) : ViewModel() {
 
     private val _playbackState = MutableStateFlow(PlaybackState())
@@ -74,9 +76,21 @@ class PlayerViewModel(
                         currentSong     = if (idx >= 0 && idx < queue.size) queue[idx] else state.currentSong
                     )
                 }
+                publishNowPlaying()
                 delay(500L)
             }
         }
+    }
+
+    /** Mirror the current track + play state to the widget store. */
+    private fun publishNowPlaying() {
+        val song = _playbackState.value.currentSong
+        nowPlayingStore.update(
+            title     = song?.title ?: "",
+            artist    = song?.artist ?: "",
+            isPlaying = _playbackState.value.isPlaying,
+            hasSong   = song != null
+        )
     }
 
     /**
@@ -87,6 +101,8 @@ class PlayerViewModel(
         queue = songs
         val items = songs.map { it.filePath to it.id }
         audioPlayer.setQueue(items, startIndex)
+        // Re-apply the active play mode so shuffle / repeat survive a fresh queue.
+        audioPlayer.setPlayMode(_playbackState.value.playMode)
         _playbackState.update { it.copy(currentSong = songs[startIndex], isPlaying = true) }
         viewModelScope.launch {
             songRepository.incrementPlayCount(songs[startIndex].id)

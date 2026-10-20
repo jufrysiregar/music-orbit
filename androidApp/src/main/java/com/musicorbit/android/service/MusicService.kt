@@ -29,6 +29,18 @@ class MusicService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
 
+    /**
+     * Keep playback alive when the user dismisses the app from Recents. Because the player is
+     * a started foreground service (promoted by Media3 while playing), removing the task should
+     * NOT stop the music. We only tear the service down when nothing is actually playing.
+     */
+    override fun onTaskRemoved(rootIntent: android.content.Intent?) {
+        if (!audioPlayer.isPlaying()) {
+            stopSelf()
+        }
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         // Only drop our reference; AudioPlayer.release() owns the real lifecycle.
         mediaSession = null

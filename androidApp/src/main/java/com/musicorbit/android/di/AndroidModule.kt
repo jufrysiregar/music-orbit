@@ -17,6 +17,7 @@ import com.musicorbit.android.ui.screen.home.HomeViewModel
 import com.musicorbit.android.ui.screen.lyrics.LyricsViewModel
 import com.musicorbit.android.ui.screen.equalizer.EqualizerViewModel
 import com.musicorbit.android.ui.screen.settings.SettingsViewModel
+import com.musicorbit.android.widget.NowPlayingStore
 
 val androidModule = module {
 
@@ -41,8 +42,11 @@ val androidModule = module {
     single { AudioPlayer(androidContext()) }
     single { EqualizerEngine() }
 
+    // ── Now-playing snapshot for the Glance widget ──────────────────────────
+    single { NowPlayingStore(androidContext()) }
+
     // ── ViewModels ──────────────────────────────────────────────────────────
-    viewModel { PlayerViewModel(get(), get(), get(), get()) }
+    viewModel { PlayerViewModel(get(), get(), get(), get(), get()) }
     viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { LyricsViewModel(get(), get(), get()) }
     viewModel { EqualizerViewModel(get(), get()) }
