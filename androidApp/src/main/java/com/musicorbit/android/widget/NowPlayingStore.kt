@@ -1,9 +1,14 @@
 package com.musicorbit.android.widget
 
 import android.content.Context
+import androidx.glance.appwidget.updateAll
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Holds the current "now playing" snapshot so the home-screen Glance widget can render
@@ -25,6 +30,13 @@ class NowPlayingStore(private val context: Context) {
     private val _state = MutableStateFlow(NowPlaying())
     val state: StateFlow<NowPlaying> = _state.asStateFlow()
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /** Glance's update APIs are suspend; run them on the main-immediate scope. */
+    private fun refreshWidget() {
+        scope.launch { MusicWidget().updateAll(context) }
+    }
+
     /**
      * Publish a new snapshot. When the visible fields actually change we refresh every
      * attached widget instance so the home screen stays in sync with playback.
@@ -39,7 +51,7 @@ class NowPlayingStore(private val context: Context) {
         )
         if (current != next) {
             _state.value = next
-            MusicWidget().updateAll(context)
+            refreshWidget()
         }
     }
 
@@ -51,7 +63,7 @@ class NowPlayingStore(private val context: Context) {
         val current = _state.value
         if (current.isPlaying != isPlaying) {
             _state.value = current.copy(isPlaying = isPlaying)
-            MusicWidget().updateAll(context)
+            refreshWidget()
         }
     }
 }

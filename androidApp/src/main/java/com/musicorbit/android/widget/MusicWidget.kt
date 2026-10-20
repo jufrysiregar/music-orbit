@@ -12,8 +12,6 @@ import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
-import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
@@ -123,9 +121,8 @@ class MusicWidget : GlanceAppWidget() {
                 .background(ColorProvider(AndroidColor.parseColor("#2A2440")))
                 .clickable(
                     actionSendBroadcast(
-                        context,
-                        WidgetActionReceiver::class.java,
-                        actionParametersOf(WidgetActionReceiver.ActionKey to action)
+                        Intent(context, WidgetActionReceiver::class.java)
+                            .putExtra(WidgetActionReceiver.ACTION_EXTRA, action)
                     )
                 ),
             contentAlignment = Alignment.Center
@@ -163,7 +160,6 @@ class WidgetActionReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        private const val ACTION_EXTRA = "mo_action"
-        val ActionKey = ActionParameters.Key<String>(ACTION_EXTRA)
+        const val ACTION_EXTRA = "mo_action"
     }
 }
