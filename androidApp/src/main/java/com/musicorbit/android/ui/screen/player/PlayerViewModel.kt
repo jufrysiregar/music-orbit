@@ -40,7 +40,7 @@ class PlayerViewModel(
     val audioSessionId: Int
         get() = runCatching {
             audioPlayer.javaClass.getMethod("getAudioSessionId").invoke(audioPlayer) as? Int
-        }.getOrDefault(0)
+        }.getOrNull() ?: 0
 
     init {
         restoreLastState()

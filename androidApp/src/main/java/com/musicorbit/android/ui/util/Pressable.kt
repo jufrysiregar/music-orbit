@@ -37,9 +37,12 @@ fun Modifier.pressableSpring(
         .scale(scale)
         .pointerInput(Unit) {
             detectTapGestures(
-                onPress   = { pressed = true },
-                onRelease = { pressed = false },
-                onTap     = { onClick() }
+                onPress = {
+                    pressed = true
+                    awaitRelease()
+                    pressed = false
+                },
+                onTap   = { onClick() }
             )
         }
 }
