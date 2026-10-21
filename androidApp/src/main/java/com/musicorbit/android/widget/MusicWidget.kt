@@ -41,7 +41,12 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.musicorbit.android.MainActivity
 import com.musicorbit.android.R
+import com.musicorbit.domain.repository.SongRepository
 import com.musicorbit.platform.AudioPlayer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
 /**
@@ -67,6 +72,14 @@ class MusicWidget : GlanceAppWidget() {
         val artProvider = albumArt?.let { ImageProvider(it) } ?: ImageProvider(R.drawable.app_logo)
 
         provideContent {
+            val ctx = LocalContext.current
+            // Deep link that opens MainActivity straight into the Main Player screen.
+            val openPlayerAction = actionStartActivity(
+                Intent(ctx, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    .putExtra(MainActivity.EXTRA_OPEN_PLAYER, true)
+                    .putExtra(MainActivity.EXTRA_TRACK_ID, snapshot.trackId ?: -1L)
+            )
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
@@ -79,8 +92,12 @@ class MusicWidget : GlanceAppWidget() {
                     modifier              = GlanceModifier.fillMaxWidth(),
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
+                    // Album art → open the Main Player screen for the current track.
                     Box(
-                        modifier         = GlanceModifier.size(56.dp).cornerRadius(12.dp),
+                        modifier         = GlanceModifier
+                            .size(56.dp)
+                            .cornerRadius(12.dp)
+                            .clickable(openPlayerAction),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -114,17 +131,11 @@ class MusicWidget : GlanceAppWidget() {
                     Spacer(GlanceModifier.width(6.dp))
 
                     // App launcher icon → opens MainActivity.
-                    val ctx = LocalContext.current
                     Box(
                         modifier = GlanceModifier
                             .size(34.dp)
                             .cornerRadius(8.dp)
-                            .clickable(
-                                actionStartActivity(
-                                    Intent(ctx, MainActivity::class.java)
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                )
-                            ),
+                            .clickable(openPlayerAction),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -139,7 +150,6 @@ class MusicWidget : GlanceAppWidget() {
 
                 // ── Transport controls, centered along the bottom ────────────────
                 // Glance's Row has no horizontalArrangement; center the cluster with weighted spacers.
-                val ctx = LocalContext.current
                 Row(
                     modifier              = GlanceModifier.fillMaxWidth(),
                     verticalAlignment     = Alignment.CenterVertically
@@ -195,6 +205,9 @@ class MusicWidgetReceiver : GlanceAppWidgetReceiver() {
  * `onReceive` runs on the main thread, so calling the ExoPlayer-backed player is safe.
  */
 class WidgetActionReceiver : BroadcastReceiver() {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.getStringExtra(ACTION_EXTRA) ?: return
         runCatching {
@@ -206,6 +219,25 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 "toggle" -> if (audioPlayer.isPlaying()) audioPlayer.pause() else audioPlayer.resume()
             }
             store.setPlaying(audioPlayer.isPlaying())
+
+            // Republish full metadata (title / artist / art) from the player so the widget also
+            // updates on track change even when the UI ViewModel is not alive to observe it.
+            val mediaId = audioPlayer.getCurrentMediaId()
+            if (mediaId != null) {
+                scope.launch {
+                    val song = GlobalContext.get().get<SongRepository>().getSongById(mediaId)
+                    if (song != null) {
+                        store.update(
+                            title       = song.title,
+                            artist      = song.artist,
+                            isPlaying   = audioPlayer.isPlaying(),
+                            hasSong     = true,
+                            albumArtUri = song.albumArtUri,
+                            trackId     = song.id
+                        )
+                    }
+                }
+            }
         }
     }
 

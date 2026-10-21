@@ -66,6 +66,7 @@ class AppStrings(
     val pickTheme: String,
     val sleepTitle: String,
     val sleepDesc: String,
+    val sleepCustom: String,
     // About
     val aboutTitle: String,
     val versionLabel: String,
@@ -140,6 +141,7 @@ internal val IndonesianStrings = AppStrings(
     pickTheme = "Pilih Tema",
     sleepTitle = "Waktu Tidur",
     sleepDesc = "Musik akan berhenti otomatis setelah waktu yang dipilih.",
+    sleepCustom = "Kustom",
     aboutTitle = "Tentang Aplikasi",
     versionLabel = "Versi 1.0.0",
     enableEqualizer = "Aktifkan Equalizer",
@@ -209,6 +211,7 @@ internal val EnglishStrings = AppStrings(
     pickTheme = "Choose Theme",
     sleepTitle = "Sleep Time",
     sleepDesc = "Music will stop automatically after the selected time.",
+    sleepCustom = "Custom",
     aboutTitle = "About App",
     versionLabel = "Version 1.0.0",
     enableEqualizer = "Enable Equalizer",

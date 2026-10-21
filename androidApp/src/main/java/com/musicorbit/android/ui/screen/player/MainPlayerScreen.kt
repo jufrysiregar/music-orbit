@@ -142,8 +142,12 @@ fun MainPlayerScreen(
                             HeartBurst(trigger = favBurst)
                             IconButton(
                                 onClick   = {
-                                    currentId?.let { viewModel.toggleFavorite(it) }
-                                    favBurst++
+                                    val id = currentId
+                                    if (id != null) {
+                                        // Burst hearts ONLY when turning favorite ON (adding).
+                                        if (!isFavorite) favBurst++
+                                        viewModel.toggleFavorite(id)
+                                    }
                                 },
                                 modifier  = Modifier.size(44.dp)
                             ) {
@@ -198,27 +202,22 @@ fun MainPlayerScreen(
                 ) {
                     ControlIcon(Icons.Default.SkipPrevious, strings.previous, size = 32.dp) { viewModel.skipPrevious() }
 
-                    // Play/Pause: circular gradient container shown ONLY while playing; hidden while
-                    // paused. Fixed 80dp box => no layout shift; icon swaps instantly (no morph).
+                    // Play/Pause: ONE consistent circular gradient container shared by both the Play
+                    // (triangle) and Pause (bars) states. Fixed 80dp box => no layout shift; the
+                    // icon swaps instantly (no morph) with a high-contrast white glyph.
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .then(
-                                if (state.isPlaying)
-                                    Modifier
-                                        .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
-                                        .clip(CircleShape)
-                                        .background(auroraGradient(), CircleShape)
-                                else
-                                    Modifier
-                            )
+                            .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
+                            .clip(CircleShape)
+                            .background(auroraGradient(), CircleShape)
                             .pressableSpring(pressedScale = 0.92f, onClick = viewModel::togglePlayPause),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (state.isPlaying) strings.pause else strings.play,
-                            tint               = if (state.isPlaying) Color.White else MaterialTheme.colorScheme.primary,
+                            tint               = Color.White,
                             modifier           = Modifier.size(40.dp)
                         )
                     }

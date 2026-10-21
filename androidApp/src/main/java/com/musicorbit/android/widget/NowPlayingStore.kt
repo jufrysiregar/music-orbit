@@ -25,7 +25,8 @@ class NowPlayingStore(private val context: Context) {
         val artist: String = "",
         val isPlaying: Boolean = false,
         val hasSong: Boolean = false,
-        val albumArtUri: String? = null
+        val albumArtUri: String? = null,
+        val trackId: Long? = null
     )
 
     private val _state = MutableStateFlow(NowPlaying())
@@ -47,7 +48,8 @@ class NowPlayingStore(private val context: Context) {
         artist: String,
         isPlaying: Boolean,
         hasSong: Boolean,
-        albumArtUri: String? = null
+        albumArtUri: String? = null,
+        trackId: Long? = null
     ) {
         val current = _state.value
         val next = NowPlaying(
@@ -55,7 +57,8 @@ class NowPlayingStore(private val context: Context) {
             artist      = artist,
             isPlaying   = isPlaying,
             hasSong     = hasSong,
-            albumArtUri = albumArtUri
+            albumArtUri = albumArtUri,
+            trackId     = trackId
         )
         if (current != next) {
             _state.value = next

@@ -1,7 +1,9 @@
 package com.musicorbit.android.ui.screen.about
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +42,25 @@ fun AboutScreen(onBack: () -> Unit) {
 
     fun openUrl(url: String) {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+
+    // Pre-filled feedback email: ACTION_SENDTO + mailto: with subject & body query params so the
+    // system resolves only real mail clients (Gmail, etc.), shown through an activity chooser.
+    fun sendFeedbackEmail() {
+        val email   = "mjuffrisiregar@gmail.com"
+        val subject = "Aplikasi Music Orbit"
+        val body    = "Hi! I'd like to share feedback regarding the Music Orbit app..."
+        val mailUri = Uri.parse("mailto:$email")
+            .buildUpon()
+            .appendQueryParameter("subject", subject)
+            .appendQueryParameter("body", body)
+            .build()
+        val intent = Intent(Intent.ACTION_SENDTO, mailUri)
+        try {
+            context.startActivity(Intent.createChooser(intent, "Send feedback"))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "No email app available", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -128,9 +149,7 @@ fun AboutScreen(onBack: () -> Unit) {
                         openUrl("https://www.linkedin.com/in/mjuffrisiregar/")
                     }
                     GlassLinkButton("Email", Modifier.weight(1f)) {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("mailto:mjuffrisiregar@gmail.com"))
-                        )
+                        sendFeedbackEmail()
                     }
                     GlassLinkButton("porto.", Modifier.weight(1f)) {
                         openUrl("https://mjs-portofolio.vercel.app/")

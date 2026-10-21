@@ -3,6 +3,8 @@ package com.musicorbit.android.ui.screen.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
@@ -37,6 +39,8 @@ fun SettingsScreen(
     var showThemeDialog    by remember { mutableStateOf(false) }
     var showTimerDialog    by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showCustomDialog   by remember { mutableStateOf(false) }
+    var customInput        by remember { mutableStateOf("") }
 
     val themeSubtitle = when (theme) {
         "LIGHT" -> strings.themeLight
@@ -156,7 +160,8 @@ fun SettingsScreen(
 
     // ── Sleep timer dialog ────────────────────────────────────────────────────
     if (showTimerDialog) {
-        val options = listOf(0, 15, 30, 45, 60, 90, 120)
+        val options = listOf(0, 5, 15, 30, 60)
+        val isCustomActive = sleepMinutes != 0 && sleepMinutes !in options
         AlertDialog(
             onDismissRequest = { showTimerDialog = false },
             title   = { Text(strings.sleepTitle) },
@@ -184,9 +189,60 @@ fun SettingsScreen(
                             Text(label, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
+                    // Custom option -> opens a numeric input dialog.
+                    Row(
+                        modifier          = Modifier.fillMaxWidth().clickable {
+                            customInput = if (isCustomActive) sleepMinutes.toString() else ""
+                            showTimerDialog = false
+                            showCustomDialog = true
+                        }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = isCustomActive, onClick = {
+                            customInput = if (isCustomActive) sleepMinutes.toString() else ""
+                            showTimerDialog = false
+                            showCustomDialog = true
+                        })
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (isCustomActive) "$sleepMinutes ${strings.minutesUnit}" else strings.sleepCustom,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
             },
             confirmButton = {}
+        )
+    }
+
+    // ── Custom sleep duration dialog (numeric only) ───────────────────────────
+    if (showCustomDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomDialog = false },
+            title   = { Text(strings.sleepCustom) },
+            text    = {
+                OutlinedTextField(
+                    value           = customInput,
+                    onValueChange   = { customInput = it.filter { c -> c.isDigit() }.take(3) },
+                    label           = { Text(strings.minutesUnit) },
+                    singleLine      = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape           = RoundedCornerShape(14.dp)
+                )
+            },
+            confirmButton = {
+                val minutes = customInput.toIntOrNull() ?: 0
+                TextButton(
+                    enabled = minutes > 0,
+                    onClick = {
+                        viewModel.saveSleepTimer(minutes)
+                        showCustomDialog = false
+                    }
+                ) { Text(strings.save) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomDialog = false }) { Text(strings.cancel) }
+            }
         )
     }
 }

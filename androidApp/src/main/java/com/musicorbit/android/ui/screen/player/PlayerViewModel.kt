@@ -134,7 +134,8 @@ class PlayerViewModel(
             artist      = song?.artist ?: "",
             isPlaying   = _playbackState.value.isPlaying,
             hasSong     = song != null,
-            albumArtUri = song?.albumArtUri
+            albumArtUri = song?.albumArtUri,
+            trackId     = song?.id
         )
     }
 
@@ -162,15 +163,10 @@ class PlayerViewModel(
         val newIndex  = songs.indexOfFirst { it.id == currentId }
         if (newIndex < 0) return
 
-        val wasPlaying = _playbackState.value.isPlaying
-        val position   = audioPlayer.getCurrentPosition()
-        val items      = songs.map { it.filePath to it.id }
-
-        audioPlayer.setQueue(items, newIndex)
-        audioPlayer.setPlayMode(_playbackState.value.playMode)
-        if (position > 0) audioPlayer.seekTo(position)
-        // setQueue() auto-plays; restore the previous paused state if we weren't playing.
-        if (!wasPlaying) audioPlayer.pause()
+        val items = songs.map { it.filePath to it.id }
+        // Reorder the live window in place (no prepare()/play()) so the playing audio never reloads
+        // or stutters when the header sort order changes.
+        audioPlayer.reorderQueue(items, newIndex)
 
         queue = songs
         _playbackState.update { it.copy(currentSong = songs[newIndex]) }

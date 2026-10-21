@@ -9,6 +9,11 @@ import com.musicorbit.domain.model.PlayMode
  */
 expect class AudioPlayer {
     fun setQueue(items: List<Pair<String, Long>>, startIndex: Int)
+    /**
+     * Re-order the current queue in place (same window, new order/index) without re-preparing the
+     * player, so ongoing audio playback stays perfectly smooth when the sort order changes.
+     */
+    fun reorderQueue(items: List<Pair<String, Long>>, newIndex: Int)
     fun playSong(filePath: String, songId: Long)
     fun pause()
     fun resume()

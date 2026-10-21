@@ -93,21 +93,19 @@ fun MiniPlayer(
 
         Spacer(Modifier.width(2.dp))
 
-        // Play / Pause (accent): circular container shown only while playing, hidden when paused.
+        // Play / Pause: consistent circular container in BOTH states (mode-aware accent).
         Box(
             modifier = Modifier
                 .size(46.dp)
-                .then(
-                    if (isPlaying) Modifier.clip(CircleShape).background(OrbitViolet)
-                    else Modifier
-                )
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary)
                 .pressableSpring(pressedScale = 0.9f, onClick = onTogglePlayPause),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector        = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = if (isPlaying) strings.pause else strings.play,
-                tint               = if (isPlaying) Color.White else OrbitViolet
+                tint               = MaterialTheme.colorScheme.onPrimary
             )
         }
 

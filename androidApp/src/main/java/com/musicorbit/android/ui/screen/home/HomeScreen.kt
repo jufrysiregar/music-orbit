@@ -65,7 +65,6 @@ fun HomeScreen(
     val searchQuery   by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOrder     by viewModel.sortOrder.collectAsStateWithLifecycle()
 
-    var showSearch   by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
 
     // Keep the live playback queue aligned with the header sort order (for "Berurut" mode).
@@ -73,9 +72,6 @@ fun HomeScreen(
         viewModel.onQueueShouldFollowSort = { list -> playerViewModel.resyncQueue(list) }
         onDispose { viewModel.onQueueShouldFollowSort = null }
     }
-
-    val focusRequester   = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         OrbitBackground()
@@ -114,7 +110,6 @@ fun HomeScreen(
                             )
                         )
                         Spacer(Modifier.weight(1f))
-                        IconToggle(Icons.Default.Search, strings.search) { showSearch = true }
                         Box {
                             IconToggle(Icons.Default.Sort, strings.sort) { showSortMenu = true }
                             DropdownMenu(
@@ -138,60 +133,32 @@ fun HomeScreen(
                         IconToggle(Icons.Default.Settings, strings.settings) { onNavigateToSettings() }
                     }
 
-                    // ── Expanding search ─────────────────────────────────────
-                    AnimatedVisibility(
-                        visible = showSearch,
-                        enter   = expandVertically(tween(220)) + fadeIn(),
-                        exit    = shrinkVertically(tween(180)) + fadeOut()
-                    ) {
-                        Row(
-                            modifier  = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value           = searchQuery,
-                                onValueChange   = viewModel::onSearchQueryChange,
-                                placeholder     = { Text(strings.searchHint) },
-                                leadingIcon     = { Icon(Icons.Default.Search, contentDescription = null) },
-                                trailingIcon    = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                            Icon(Icons.Default.Clear, contentDescription = strings.clear)
-                                        }
-                                    }
-                                },
-                                singleLine      = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                shape           = RoundedCornerShape(18.dp),
-                                modifier        = Modifier
-                                    .weight(1f)
-                                    .focusRequester(focusRequester),
-                                colors          = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor    = OrbitViolet,
-                                    unfocusedBorderColor  = MaterialTheme.colorScheme.outlineVariant,
-                                    focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
-                                )
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            IconButton(onClick = {
-                                showSearch = false
-                                viewModel.onSearchQueryChange("")
-                                keyboardController?.hide()
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = strings.closeSearch)
+                    // ── Inline header search (always visible, rounded) ────────────
+                    OutlinedTextField(
+                        value           = searchQuery,
+                        onValueChange   = viewModel::onSearchQueryChange,
+                        placeholder     = { Text(strings.searchHint) },
+                        leadingIcon     = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon    = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                    Icon(Icons.Default.Clear, contentDescription = strings.clear)
+                                }
                             }
-                        }
-                    }
-                    LaunchedEffect(showSearch) {
-                        if (showSearch) {
-                            kotlinx.coroutines.delay(120)
-                            focusRequester.requestFocus()
-                            keyboardController?.show()
-                        }
-                    }
+                        },
+                        singleLine      = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        shape           = RoundedCornerShape(18.dp),
+                        modifier        = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp),
+                        colors          = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor      = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor    = MaterialTheme.colorScheme.outlineVariant,
+                            focusedContainerColor   = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f)
+                        )
+                    )
                 }
             }
         ) { innerPadding ->
