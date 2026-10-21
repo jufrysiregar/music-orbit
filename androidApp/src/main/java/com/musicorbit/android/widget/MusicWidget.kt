@@ -25,7 +25,6 @@ import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
-import androidx.glance.layout.Arrangement
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
@@ -139,17 +138,19 @@ class MusicWidget : GlanceAppWidget() {
                 Spacer(GlanceModifier.height(10.dp))
 
                 // ── Transport controls, centered along the bottom ────────────────
+                // Glance's Row has no horizontalArrangement; center the cluster with weighted spacers.
+                val ctx = LocalContext.current
                 Row(
                     modifier              = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    val ctx = LocalContext.current
+                    Spacer(GlanceModifier.defaultWeight())
                     WidgetButton(ctx, R.drawable.ic_widget_prev, "Previous", "prev", 44.dp)
                     Spacer(GlanceModifier.width(10.dp))
                     WidgetButton(ctx, playIcon, "Play/Pause", "toggle", 54.dp)
                     Spacer(GlanceModifier.width(10.dp))
                     WidgetButton(ctx, R.drawable.ic_widget_next, "Next", "next", 44.dp)
+                    Spacer(GlanceModifier.defaultWeight())
                 }
             }
         }
