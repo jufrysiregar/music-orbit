@@ -48,15 +48,15 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary            = OrbitViolet,
+    primary            = DayPrimary,
     onPrimary          = DaySurface,
-    primaryContainer   = Color(0xFFE4DBFF),
-    onPrimaryContainer = DayOnSurface,
-    secondary          = OrbitBlue,
+    primaryContainer   = DayPrimaryContainer,
+    onPrimaryContainer = DayOnPrimaryContainer,
+    secondary          = DaySecondary,
     onSecondary        = DaySurface,
-    secondaryContainer = Color(0xFFCFEBF7),
+    secondaryContainer = DaySecondaryContainer,
     onSecondaryContainer = DayOnSurface,
-    tertiary           = OrbitMagenta,
+    tertiary           = DayTertiary,
     onTertiary         = DaySurface,
     background         = DayBackground,
     onBackground       = DayOnSurface,
@@ -64,9 +64,10 @@ private val LightColorScheme = lightColorScheme(
     onSurface          = DayOnSurface,
     surfaceVariant     = DaySurfaceVariant,
     onSurfaceVariant   = DayOnSurfaceMuted,
-    surfaceTint        = OrbitViolet,
+    surfaceTint        = DayPrimary,
     outline            = DayOutline,
-    outlineVariant     = DayOutline
+    outlineVariant     = DayOutline,
+    error              = Color(0xFFB3261E)
 )
 
 /** App-wide corner radius scale for the premium, soft-edged look. */

@@ -43,6 +43,21 @@ class PlayerViewModel(
     private var positionJob: Job? = null
     private var sleepTimerJob: Job? = null
     private var queue: List<Song> = emptyList()
+    private var lastRecordedId: Long? = null
+
+    /**
+     * Records a track as played exactly once. Both the explicit actions and the player's
+     * onMediaItemTransition callback route through here, so the id guard prevents double-counting
+     * when a single track change triggers both paths.
+     */
+    private fun recordPlayback(song: Song) {
+        if (song.id == lastRecordedId) return
+        lastRecordedId = song.id
+        viewModelScope.launch {
+            songRepository.incrementPlayCount(song.id)
+            preferencesRepository.saveLastPlayedSongId(song.id)
+        }
+    }
 
     /** Exposed for EqualizerViewModel to initialize the EQ with correct session ID. */
     val audioSessionId: Int
@@ -65,6 +80,17 @@ class PlayerViewModel(
         audioPlayer.setPlaybackStateListener { isPlaying ->
             _playbackState.update { it.copy(isPlaying = isPlaying) }
             nowPlayingStore.setPlaying(isPlaying)
+        }
+        // Immediate track-change sync: when Next/Prev/auto-advance fires (including from the
+        // notification or home-screen widget), refresh title/artist/art in the footer & player
+        // without waiting for the next poll tick.
+        audioPlayer.setTrackChangeListener { index ->
+            val song = queue.getOrNull(index)
+            if (song != null) {
+                _playbackState.update { it.copy(currentSong = song) }
+                publishNowPlaying()
+                recordPlayback(song)
+            }
         }
     }
 
@@ -123,10 +149,7 @@ class PlayerViewModel(
         // Re-apply the active play mode so shuffle / repeat survive a fresh queue.
         audioPlayer.setPlayMode(_playbackState.value.playMode)
         _playbackState.update { it.copy(currentSong = songs[startIndex], isPlaying = true) }
-        viewModelScope.launch {
-            songRepository.incrementPlayCount(songs[startIndex].id)
-            preferencesRepository.saveLastPlayedSongId(songs[startIndex].id)
-        }
+        recordPlayback(songs[startIndex])
     }
 
     /**
@@ -157,10 +180,7 @@ class PlayerViewModel(
         audioPlayer.playSong(song.filePath, song.id)
         queue = listOf(song)
         _playbackState.update { it.copy(currentSong = song, isPlaying = true) }
-        viewModelScope.launch {
-            songRepository.incrementPlayCount(song.id)
-            preferencesRepository.saveLastPlayedSongId(song.id)
-        }
+        recordPlayback(song)
     }
 
     fun togglePlayPause() {
@@ -185,10 +205,7 @@ class PlayerViewModel(
         val idx = audioPlayer.getCurrentQueueIndex()
         if (idx >= 0 && idx < queue.size) {
             _playbackState.update { it.copy(currentSong = queue[idx]) }
-            viewModelScope.launch {
-                songRepository.incrementPlayCount(queue[idx].id)
-                preferencesRepository.saveLastPlayedSongId(queue[idx].id)
-            }
+            recordPlayback(queue[idx])
         }
     }
 
@@ -197,10 +214,7 @@ class PlayerViewModel(
         val idx = audioPlayer.getCurrentQueueIndex()
         if (idx >= 0 && idx < queue.size) {
             _playbackState.update { it.copy(currentSong = queue[idx]) }
-            viewModelScope.launch {
-                songRepository.incrementPlayCount(queue[idx].id)
-                preferencesRepository.saveLastPlayedSongId(queue[idx].id)
-            }
+            recordPlayback(queue[idx])
         }
     }
 
@@ -220,7 +234,11 @@ class PlayerViewModel(
     fun updateSongMetadata(song: Song) {
         viewModelScope.launch {
             songRepository.upsertSong(song)
-            _playbackState.update { it.copy(currentSong = song) }
+            // Keep the in-memory queue in sync: the 250ms poll re-reads queue[idx] and would
+            // otherwise revert the edited title/artist. Also refresh Now Playing + the widget now.
+            queue = queue.map { if (it.id == song.id) song else it }
+            _playbackState.update { st -> if (st.currentSong?.id == song.id) st.copy(currentSong = song) else st }
+            publishNowPlaying()
         }
     }
 
@@ -276,6 +294,7 @@ class PlayerViewModel(
         sleepTimerJob?.cancel()
         // Detach the listener so a cleared ViewModel doesn't keep receiving player callbacks.
         audioPlayer.setPlaybackStateListener(null)
+        audioPlayer.setTrackChangeListener(null)
         // NOTE: we intentionally do NOT call audioPlayer.release() here.
         // The ExoPlayer + MediaSession are owned by the AudioPlayer Koin singleton and are
         // shared with MusicService so playback can continue in the background. Releasing them

@@ -114,8 +114,8 @@ fun MainPlayerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
-                        .shadow(28.dp, RoundedCornerShape(26.dp), ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
-                        .clip(RoundedCornerShape(26.dp))
+                        .shadow(28.dp, RoundedCornerShape(20.dp), ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
+                        .clip(RoundedCornerShape(20.dp))
                 ) {
                     AlbumArtImage(
                         uri      = state.currentSong?.albumArtUri,
@@ -198,30 +198,29 @@ fun MainPlayerScreen(
                 ) {
                     ControlIcon(Icons.Default.SkipPrevious, strings.previous, size = 32.dp) { viewModel.skipPrevious() }
 
+                    // Play/Pause: circular gradient container shown ONLY while playing; hidden while
+                    // paused. Fixed 80dp box => no layout shift; icon swaps instantly (no morph).
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
-                            .clip(CircleShape)
-                            .background(auroraGradient(), CircleShape)
+                            .then(
+                                if (state.isPlaying)
+                                    Modifier
+                                        .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
+                                        .clip(CircleShape)
+                                        .background(auroraGradient(), CircleShape)
+                                else
+                                    Modifier
+                            )
                             .pressableSpring(pressedScale = 0.92f, onClick = viewModel::togglePlayPause),
                         contentAlignment = Alignment.Center
                     ) {
-                        AnimatedContent(
-                            targetState = state.isPlaying,
-                            transitionSpec = {
-                                (scaleIn(animationSpec = tween(180)) + fadeIn()) togetherWith
-                                    (scaleOut(animationSpec = tween(180)) + fadeOut())
-                            },
-                            label = "playpause"
-                        ) { playing ->
-                            Icon(
-                                imageVector        = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (playing) strings.pause else strings.play,
-                                tint               = Color.White,
-                                modifier           = Modifier.size(40.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (state.isPlaying) strings.pause else strings.play,
+                            tint               = if (state.isPlaying) Color.White else MaterialTheme.colorScheme.primary,
+                            modifier           = Modifier.size(40.dp)
+                        )
                     }
 
                     ControlIcon(Icons.Default.SkipNext, strings.next, size = 32.dp) { viewModel.skipNext() }
@@ -246,29 +245,25 @@ fun MainPlayerScreen(
                         Text(strings.lyrics)
                     }
 
-                    // Play-mode button: icon ONLY. Tap cycles Sequential → Shuffle → Repeat One live.
+                    // Play-mode button: icon ONLY. Tap cycles Sequential → Shuffle → Repeat One.
+                    // Styling/shape/background stay STATIC — only the icon + playback logic change.
                     val (modeIcon, modeText) = when (state.playMode) {
                         PlayMode.REPEAT_ONE -> Icons.Default.RepeatOne to strings.modeRepeatOne
                         PlayMode.SHUFFLE    -> Icons.Default.Shuffle to strings.modeShuffle
                         PlayMode.SEQUENTIAL -> Icons.Default.Repeat to strings.modeSequential
                     }
-                    val modeActive = state.playMode != PlayMode.SEQUENTIAL
                     Box(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
-                            .background(
-                                if (!modeActive) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                                else if (state.playMode == PlayMode.SHUFFLE) OrbitCyan else OrbitViolet
-                            )
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
                             .pressableSpring(onClick = viewModel::cyclePlayMode),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             modeIcon,
                             contentDescription = "${strings.modePrefix}: $modeText",
-                            tint               = if (modeActive) Color.White
-                                else MaterialTheme.colorScheme.onSurface,
+                            tint               = MaterialTheme.colorScheme.onSurface,
                             modifier           = Modifier.size(26.dp)
                         )
                     }
@@ -340,8 +335,10 @@ private fun HeartBurst(trigger: Int, modifier: Modifier = Modifier) {
         progress.animateTo(1f, animationSpec = tween(durationMillis = totalMs.toInt()))
     }
 
+    // Fixed to the button size so the animation never reserves 170dp of height and pushes the
+    // title / action buttons around. The hearts are drawn (unclipped) OUTSIDE these bounds.
     Box(
-        modifier         = modifier.size(width = 64.dp, height = 170.dp),
+        modifier         = modifier.size(44.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         hearts.forEach { h ->
@@ -517,8 +514,6 @@ private fun EditSongBottomSheet(
                     shape    = RoundedCornerShape(14.dp),
                     enabled  = title.isNotBlank()
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
                     Text(strings.save)
                 }
             }

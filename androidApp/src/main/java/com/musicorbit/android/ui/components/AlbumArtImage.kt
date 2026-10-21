@@ -42,7 +42,7 @@ fun AlbumArtImage(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(uri)
-                .crossfade(true)
+                .crossfade(false)
                 .build(),
             contentDescription = "Album Art",
             contentScale       = ContentScale.Crop,

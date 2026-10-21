@@ -28,6 +28,7 @@ actual class AudioPlayer(private val context: Context) {
     }
 
     private var playbackListener: ((Boolean) -> Unit)? = null
+    private var trackListener: ((Int) -> Unit)? = null
 
     init {
         exoPlayer.addListener(object : Player.Listener {
@@ -39,6 +40,12 @@ actual class AudioPlayer(private val context: Context) {
                     wakeLock.release()
                 }
                 playbackListener?.invoke(isPlaying)
+            }
+
+            // Fires on Next/Prev, auto-advance, and remote control/widget actions, so the UI can
+            // reflect the newly playing track in real time (not only via polling).
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                trackListener?.invoke(exoPlayer.currentMediaItemIndex)
             }
         })
     }
@@ -111,9 +118,14 @@ actual class AudioPlayer(private val context: Context) {
         playbackListener = listener
     }
 
+    actual fun setTrackChangeListener(listener: ((queueIndex: Int) -> Unit)?) {
+        trackListener = listener
+    }
+
     actual fun release() {
         if (wakeLock.isHeld) runCatching { wakeLock.release() }
         playbackListener = null
+        trackListener = null
         mediaSession.release()
         exoPlayer.release()
     }

@@ -22,4 +22,5 @@ actual class AudioPlayer {
     actual fun isPlaying(): Boolean       = false
     actual fun release() {}
     actual fun setPlaybackStateListener(listener: ((isPlaying: Boolean) -> Unit)?) {}
+    actual fun setTrackChangeListener(listener: ((queueIndex: Int) -> Unit)?) {}
 }

@@ -1,32 +1,27 @@
 package com.musicorbit.android.service
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
-import androidx.core.app.NotificationCompat
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import com.musicorbit.android.MainActivity
 import com.musicorbit.android.R
 import com.musicorbit.platform.AudioPlayer
 import org.koin.android.ext.android.inject
 
 /**
  * MediaSessionService that enables background audio playback and system media controls
- * (notification + lock-screen / Bluetooth / wired-headset buttons).
+ * (notification shade + lock-screen / Bluetooth / wired-headset buttons).
  *
- * The ExoPlayer and its MediaSession live inside the [AudioPlayer] Koin singleton so that
- * they survive Activity teardown. The service simply borrows that session and publishes it
- * through [onGetSession]. Media3 promotes the service to the foreground (and posts the media
- * notification) automatically once playback starts.
+ * The ExoPlayer and its MediaSession live inside the [AudioPlayer] Koin singleton so they survive
+ * Activity teardown. The service borrows that session via [onGetSession].
  *
- * We additionally raise a persistent foreground notification at start and return START_STICKY
- * so the OS keeps the service (and the PARTIAL_WAKE_LOCK held by [AudioPlayer]) alive through
- * screen-off / Doze, preventing playback from stalling a couple of minutes after the screen locks.
+ * Item 7: we let Media3 own the notification through [DefaultMediaNotificationProvider]. That
+ * produces a native MediaStyle notification with Play/Pause, Previous, Next and a Stop ("X")
+ * action, plus a swipe-to-dismiss delete intent — and it promotes the service to the foreground
+ * (FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK) automatically while playing. This replaces an earlier
+ * control-less persistent notification so there is exactly ONE, fully actionable media notification
+ * that stays on the shade / lock screen even when the app is minimized or removed from Recents.
+ * Doze/screen-off playback is kept alive by the PARTIAL_WAKE_LOCK held inside [AudioPlayer].
  */
 class MusicService : MediaSessionService() {
 
@@ -38,28 +33,33 @@ class MusicService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         mediaSession = audioPlayer.getMediaSession()
-        createNotificationChannel()
+        // Rich MediaStyle notification with transport controls + stop/dismiss action.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider(this).apply {
+                setSmallIcon(R.drawable.ic_stat_music)
+            }
+        )
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
 
     /**
-     * Keep the service alive and foreground immediately: a persistent notification plus
-     * START_STICKY makes the system restart it if it is ever killed, so background audio survives
-     * Doze / screen-off. [intent] may be null on a sticky restart.
+     * Return START_STICKY so the system will recreate the service if it is ever killed while
+     * nothing is playing. Media3 re-posts the foreground media notification on its own as soon as
+     * playback resumes. [intent] may be null on a sticky restart.
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForegroundCompat(buildPersistentNotification())
+        super.onStartCommand(intent, flags, startId)
         return START_STICKY
     }
 
     /**
-     * Keep playback alive when the user dismisses the app from Recents. Because the player is
-     * a started foreground service (promoted by Media3 while playing), removing the task should
-     * NOT stop the music. We only tear the service down when nothing is actually playing.
+     * Keep playback alive when the user dismisses the app from Recents. Because Media3 promotes
+     * the service to the foreground while playing, removing the task should NOT stop the music.
+     * We only tear the service down when nothing is actually playing.
      */
-    override fun onTaskRemoved(rootIntent: android.content.Intent?) {
+    override fun onTaskRemoved(rootIntent: Intent?) {
         if (!audioPlayer.isPlaying()) {
             stopSelf()
         }
@@ -70,57 +70,5 @@ class MusicService : MediaSessionService() {
         // Only drop our reference; AudioPlayer.release() owns the real lifecycle.
         mediaSession = null
         super.onDestroy()
-    }
-
-    // ── Foreground notification ──────────────────────────────────────────────
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Music Orbit Playback",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Keeps music playing in the background"
-                setShowBadge(false)
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
-        }
-    }
-
-    private fun buildPersistentNotification(): Notification {
-        val contentIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Music Orbit")
-            .setContentText("Music is playing")
-            .setSmallIcon(R.drawable.ic_stat_music)
-            .setContentIntent(contentIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
-    }
-
-    private fun startForegroundCompat(notification: Notification) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIF_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-            )
-        } else {
-            startForeground(NOTIF_ID, notification)
-        }
-    }
-
-    companion object {
-        private const val NOTIF_ID = 1001
-        private const val CHANNEL_ID = "music_orbit_playback"
     }
 }

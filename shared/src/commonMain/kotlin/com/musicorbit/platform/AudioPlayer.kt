@@ -29,4 +29,11 @@ expect class AudioPlayer {
      * the home-screen widget in sync even after long idle periods or when the app is backgrounded.
      */
     fun setPlaybackStateListener(listener: ((isPlaying: Boolean) -> Unit)?)
+
+    /**
+     * Registers a callback invoked immediately when the current media item changes (Next/Prev,
+     * auto-advance, or a control coming from the system notification / home-screen widget).
+     * Receives the new queue index. Pass null to clear. Used for real-time footer/title sync.
+     */
+    fun setTrackChangeListener(listener: ((queueIndex: Int) -> Unit)?)
 }

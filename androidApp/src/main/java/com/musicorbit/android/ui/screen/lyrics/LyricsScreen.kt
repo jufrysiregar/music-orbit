@@ -8,9 +8,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +35,9 @@ fun LyricsScreen(
     val lyrics    by viewModel.lyrics.collectAsStateWithLifecycle()
     val inputText by viewModel.inputText.collectAsStateWithLifecycle()
     val song      by viewModel.song.collectAsStateWithLifecycle()
+
+    // Purely a UI concern: view mode vs inline edit mode inside the SAME container.
+    var isEditing by remember { mutableStateOf(false) }
 
     LaunchedEffect(songId) { viewModel.loadLyrics(songId) }
 
@@ -66,60 +71,90 @@ fun LyricsScreen(
                     .padding(padding)
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (lyrics != null) {
-                    GlassCard(shape = RoundedCornerShape(22.dp), contentPadding = 18.dp, glow = true) {
-                        Text(
-                            text  = lyrics!!.lyricsText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Text(strings.editOrPaste, style = MaterialTheme.typography.labelMedium)
-                } else {
-                    Text(
-                        text  = strings.noLyricsHint,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                OutlinedTextField(
-                    value        = inputText,
-                    onValueChange = viewModel::onInputTextChange,
-                    label        = { Text(strings.pasteHere) },
-                    placeholder  = { Text(strings.pastePlaceholder) },
-                    shape        = RoundedCornerShape(18.dp),
-                    modifier     = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 200.dp),
-                    minLines     = 8
-                )
-
+                // ── Section header + inline-edit trigger (pencil) ────────────────────
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
-                        onClick  = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(viewModel.buildSearchUrl())))
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape    = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Default.Search, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text(strings.searchLyrics)
+                    Text(
+                        text  = strings.lyrics,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (!isEditing) {
+                        IconButton(onClick = {
+                            // Seed the editor with the current lyrics before switching to edit mode.
+                            viewModel.onInputTextChange(lyrics?.lyricsText ?: "")
+                            isEditing = true
+                        }) {
+                            Icon(Icons.Default.Edit, contentDescription = strings.editLyrics)
+                        }
                     }
+                }
 
-                    Button(
-                        onClick  = { viewModel.saveLyrics(songId) },
-                        enabled  = inputText.isNotBlank(),
-                        modifier = Modifier.weight(1f),
-                        shape    = RoundedCornerShape(14.dp)
-                    ) {
-                        Text(strings.saveLyrics)
+                // ── Single consolidated lyrics container ─────────────────────────────
+                GlassCard(shape = RoundedCornerShape(22.dp), contentPadding = 18.dp, glow = true) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        if (isEditing) {
+                            OutlinedTextField(
+                                value         = inputText,
+                                onValueChange = viewModel::onInputTextChange,
+                                label         = { Text(strings.pasteHere) },
+                                placeholder   = { Text(strings.pastePlaceholder) },
+                                shape         = RoundedCornerShape(16.dp),
+                                modifier      = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 260.dp),
+                                minLines      = 10
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                modifier              = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        // Discard unsaved changes and revert to the stored lyrics.
+                                        viewModel.onInputTextChange(lyrics?.lyricsText ?: "")
+                                        isEditing = false
+                                    },
+                                    shape = RoundedCornerShape(14.dp)
+                                ) { Text(strings.cancel) }
+
+                                Button(
+                                    onClick = {
+                                        viewModel.saveLyrics(songId)
+                                        isEditing = false
+                                    },
+                                    enabled = inputText.isNotBlank(),
+                                    shape   = RoundedCornerShape(14.dp)
+                                ) { Text(strings.saveLyrics) }
+                            }
+                        } else if (lyrics != null) {
+                            Text(
+                                text  = lyrics!!.lyricsText,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        } else {
+                            Text(
+                                text  = strings.noLyricsHint,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = {
+                                viewModel.onInputTextChange("")
+                                isEditing = true
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(strings.editOrPaste)
+                            }
+                        }
                     }
                 }
             }

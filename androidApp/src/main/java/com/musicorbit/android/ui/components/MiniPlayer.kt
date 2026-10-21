@@ -1,5 +1,6 @@
 package com.musicorbit.android.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.musicorbit.android.i18n.LocalStrings
@@ -57,7 +59,7 @@ fun MiniPlayer(
                 uri      = song.albumArtUri,
                 modifier = Modifier
                     .size(46.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .orbitSharedElement(OrbitKeys.AlbumArt)
             )
             Spacer(Modifier.width(12.dp))
@@ -91,18 +93,21 @@ fun MiniPlayer(
 
         Spacer(Modifier.width(2.dp))
 
-        // Play / Pause (accent)
+        // Play / Pause (accent): circular container shown only while playing, hidden when paused.
         Box(
             modifier = Modifier
                 .size(46.dp)
-                .clip(CircleShape)
+                .then(
+                    if (isPlaying) Modifier.clip(CircleShape).background(OrbitViolet)
+                    else Modifier
+                )
                 .pressableSpring(pressedScale = 0.9f, onClick = onTogglePlayPause),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector        = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = if (isPlaying) strings.pause else strings.play,
-                tint               = OrbitViolet
+                tint               = if (isPlaying) Color.White else OrbitViolet
             )
         }
 
