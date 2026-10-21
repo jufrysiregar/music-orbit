@@ -203,14 +203,15 @@ fun MainPlayerScreen(
                     ControlIcon(Icons.Default.SkipPrevious, strings.previous, size = 32.dp) { viewModel.skipPrevious() }
 
                     // Play/Pause styling is DISTINCT per state (fixed 80dp box => zero layout
-                    // shift, instant icon swap => no flicker/morph):
-                    //  • Play  (currently paused, triangle shown): colored circular gradient container.
-                    //  • Pause (currently playing, bars shown): clean icon, NO circular background.
+                    // shift, instant icon swap => no flicker/morph). Driven by playWhenReady so it
+                    // never flickers during brief buffering, identical in light & dark:
+                    //  • Playing : colored circular gradient container + white Pause bars.
+                    //  • Paused  : clean Play triangle tinted with the primary color, NO container.
                     Box(
                         modifier = Modifier
                             .size(80.dp)
                             .then(
-                                if (!state.isPlaying)
+                                if (state.isPlaying)
                                     Modifier
                                         .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
                                         .clip(CircleShape)
@@ -223,7 +224,7 @@ fun MainPlayerScreen(
                         Icon(
                             imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (state.isPlaying) strings.pause else strings.play,
-                            tint               = if (state.isPlaying) MaterialTheme.colorScheme.primary else Color.White,
+                            tint               = if (state.isPlaying) Color.White else MaterialTheme.colorScheme.primary,
                             modifier           = Modifier.size(if (state.isPlaying) 46.dp else 40.dp)
                         )
                     }

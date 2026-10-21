@@ -1,7 +1,12 @@
 package com.musicorbit.android.service
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.musicorbit.android.R
@@ -30,15 +35,45 @@ class MusicService : MediaSessionService() {
     // The session is owned by AudioPlayer; we must NOT release it here.
     private var mediaSession: MediaSession? = null
 
+    // A controller kept connected to our OWN session. Media3 only treats a MediaSessionService as
+    // "actively controlled" (and therefore keeps it in the foreground + alive after the task is
+    // swiped away) when at least one MediaController is bound. Our UI drives the shared ExoPlayer
+    // directly and never binds one, so without this the process is reclaimed shortly after the app
+    // is dismissed — which is exactly why playback died and every transport button became a no-op
+    // on re-entry (fresh, empty player). This passive controller fixes all three symptoms.
+    private var keepAliveController: MediaController? = null
+
     override fun onCreate() {
         super.onCreate()
         mediaSession = audioPlayer.getMediaSession()
-        // Rich MediaStyle notification with transport controls + stop/dismiss action.
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider(this).apply {
-                setSmallIcon(R.drawable.ic_stat_music)
+
+        // Ensure a visible, correctly-configured notification channel exists so the MediaStyle card
+        // reliably appears in the shade / on the lock screen (IMPORTANCE_LOW = shown, but silent).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(NOTIF_CHANNEL_ID) == null) {
+                nm.createNotificationChannel(
+                    NotificationChannel(NOTIF_CHANNEL_ID, "Playback", NotificationManager.IMPORTANCE_LOW)
+                        .apply { setShowBadge(false) }
+                )
             }
+        }
+
+        // Rich MediaStyle notification with transport controls + stop/dismiss action, on our channel.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .setNotificationChannelId(NOTIF_CHANNEL_ID)
+                .setNotificationChannelName("Playback")
+                .build()
+                .apply { setSmallIcon(R.drawable.ic_stat_music) }
         )
+
+        mediaSession?.let { session ->
+            val future = MediaController.Builder(this, session.token).buildAsync()
+            future.addListener({
+                keepAliveController = runCatching { future.get() }.getOrNull()
+            }, ContextCompat.getMainExecutor(this))
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
@@ -65,7 +100,9 @@ class MusicService : MediaSessionService() {
      * Only when nothing is playing do we tear the service down.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (!audioPlayer.isPlaying()) {
+        // Base the decision on play intent (playWhenReady), not raw isPlaying, so a brief buffering
+        // stall at the exact moment of dismissal never tears the service down.
+        if (!audioPlayer.isPlayIntent()) {
             stopSelf()
             super.onTaskRemoved(rootIntent)
         }
@@ -73,8 +110,14 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        // Only drop our reference; AudioPlayer.release() owns the real lifecycle.
+        // Release only our keep-alive controller; the shared session/player belong to AudioPlayer.
+        keepAliveController?.release()
+        keepAliveController = null
         mediaSession = null
         super.onDestroy()
+    }
+
+    companion object {
+        private const val NOTIF_CHANNEL_ID = "music_orbit_playback"
     }
 }

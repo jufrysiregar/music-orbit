@@ -103,7 +103,7 @@ class PlayerViewModel(
         _playbackState.update {
             it.copy(
                 currentSong     = song,
-                isPlaying       = audioPlayer.isPlaying(),
+                isPlaying       = audioPlayer.isPlayIntent(),
                 currentPosition = audioPlayer.getCurrentPosition(),
                 duration        = audioPlayer.getDuration()
             )
@@ -158,7 +158,7 @@ class PlayerViewModel(
                     val idx = audioPlayer.getCurrentQueueIndex()
                     _playbackState.update { state ->
                         state.copy(
-                            isPlaying       = audioPlayer.isPlaying(),
+                            isPlaying       = audioPlayer.isPlayIntent(),
                             currentPosition = audioPlayer.getCurrentPosition(),
                             duration        = audioPlayer.getDuration(),
                             currentSong     = if (idx >= 0 && idx < queue.size) queue[idx] else state.currentSong
@@ -225,8 +225,10 @@ class PlayerViewModel(
     }
 
     fun togglePlayPause() {
-        if (audioPlayer.isPlaying()) audioPlayer.pause() else audioPlayer.resume()
-        _playbackState.update { it.copy(isPlaying = audioPlayer.isPlaying()) }
+        // Decide from playWhenReady (isPlayIntent) so the button reacts instantly and never
+        // desyncs while the player is briefly buffering.
+        if (audioPlayer.isPlayIntent()) audioPlayer.pause() else audioPlayer.resume()
+        _playbackState.update { it.copy(isPlaying = audioPlayer.isPlayIntent()) }
     }
 
     fun stop() {

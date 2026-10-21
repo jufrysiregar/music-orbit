@@ -173,36 +173,26 @@ fun HomeScreen(
         ) { innerPadding ->
             Box(modifier = Modifier.fillMaxSize()) {
 
-                if (songs.isEmpty()) {
-                    Box(
-                        modifier         = Modifier.fillMaxSize().padding(innerPadding),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(strings.noSongs, style = MaterialTheme.typography.titleMedium)
-                            Spacer(Modifier.height(12.dp))
-                            Button(onClick = { viewModel.triggerScan() }) { Text(strings.rescan) }
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier      = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            top    = innerPadding.calculateTopPadding() + 4.dp,
-                            bottom = 148.dp + innerPadding.calculateBottomPadding(),
-                            start  = 12.dp,
-                            end    = 12.dp
+                // Song list only. There is intentionally NO "no music / rescan" screen: the
+                // permission + initial scan already ran, the list is a reactive DB flow, and a
+                // silent re-scan fires on every resume — so newly added songs appear automatically.
+                LazyColumn(
+                    modifier      = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        top    = innerPadding.calculateTopPadding() + 4.dp,
+                        bottom = 148.dp + innerPadding.calculateBottomPadding(),
+                        start  = 12.dp,
+                        end    = 12.dp
+                    )
+                ) {
+                    itemsIndexed(songs, key = { _, s -> s.id }) { _, song ->
+                        SongRow(
+                            song    = song,
+                            onClick = {
+                                playerViewModel.playFromQueue(songs, songs.indexOf(song))
+                                onSongClick(song)
+                            }
                         )
-                    ) {
-                        itemsIndexed(songs, key = { _, s -> s.id }) { _, song ->
-                            SongRow(
-                                song    = song,
-                                onClick = {
-                                    playerViewModel.playFromQueue(songs, songs.indexOf(song))
-                                    onSongClick(song)
-                                }
-                            )
-                        }
                     }
                 }
 

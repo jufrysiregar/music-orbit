@@ -73,7 +73,16 @@ actual class AudioPlayer(private val context: Context) {
                 } else if (wakeLock.isHeld) {
                     wakeLock.release()
                 }
-                playbackListener?.invoke(isPlaying)
+                // Report the user's play intent (playWhenReady) rather than the raw isPlaying flag:
+                // this keeps the play/pause button from flickering to the "paused" look during brief
+                // buffering. Wake-lock handling above still keys off the real isPlaying value.
+                playbackListener?.invoke(exoPlayer.playWhenReady)
+            }
+
+            // playWhenReady flips instantly on user play/pause even while the player is still
+            // preparing, so the UI updates with zero delay and never shows a stale style.
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                playbackListener?.invoke(playWhenReady)
             }
 
             // Fires on Next/Prev, auto-advance, and remote control/widget actions, so the UI can
@@ -173,6 +182,9 @@ actual class AudioPlayer(private val context: Context) {
         exoPlayer.duration.takeIf { it != C.TIME_UNSET } ?: 0L
 
     actual fun isPlaying(): Boolean = exoPlayer.isPlaying
+
+    /** Play intent (playWhenReady) — stable across buffering; use for button visuals. */
+    actual fun isPlayIntent(): Boolean = exoPlayer.playWhenReady
 
     actual fun setPlaybackStateListener(listener: ((isPlaying: Boolean) -> Unit)?) {
         playbackListener = listener

@@ -26,6 +26,13 @@ expect class AudioPlayer {
     fun getCurrentPosition(): Long
     fun getDuration(): Long
     fun isPlaying(): Boolean
+
+    /**
+     * Whether the user intends playback (playWhenReady). Unlike [isPlaying] this stays true while
+     * the player is buffering, so UI state never flickers between "playing" and "paused" during
+     * short stalls. Use this — not [isPlaying] — to drive play/pause button visuals.
+     */
+    fun isPlayIntent(): Boolean
     fun release()
 
     /**

@@ -43,6 +43,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.musicorbit.android.MainActivity
 import com.musicorbit.android.R
+import com.musicorbit.android.service.MusicService
 import com.musicorbit.domain.repository.SongRepository
 import com.musicorbit.platform.AudioPlayer
 import kotlinx.coroutines.CoroutineScope
@@ -215,14 +216,17 @@ class WidgetActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.getStringExtra(ACTION_EXTRA) ?: return
         runCatching {
+            // Make sure the MediaSessionService is running so playback runs as a proper foreground
+            // media service (notification + keep-alive controller) instead of a bare background player.
+            context.startService(Intent(context, MusicService::class.java))
             val audioPlayer = GlobalContext.get().get<AudioPlayer>()
             val store       = GlobalContext.get().get<NowPlayingStore>()
             when (action) {
                 "prev"   -> audioPlayer.skipPrevious()
                 "next"   -> audioPlayer.skipNext()
-                "toggle" -> if (audioPlayer.isPlaying()) audioPlayer.pause() else audioPlayer.resume()
+                "toggle" -> if (audioPlayer.isPlayIntent()) audioPlayer.pause() else audioPlayer.resume()
             }
-            store.setPlaying(audioPlayer.isPlaying())
+            store.setPlaying(audioPlayer.isPlayIntent())
 
             // Republish full metadata (title / artist / art) from the player so the widget also
             // updates on track change even when the UI ViewModel is not alive to observe it.
@@ -234,7 +238,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
                         store.update(
                             title       = song.title,
                             artist      = song.artist,
-                            isPlaying   = audioPlayer.isPlaying(),
+                            isPlaying   = audioPlayer.isPlayIntent(),
                             hasSong     = true,
                             albumArtUri = song.albumArtUri,
                             trackId     = song.id

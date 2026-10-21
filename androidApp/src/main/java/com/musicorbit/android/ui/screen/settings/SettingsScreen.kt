@@ -1,11 +1,5 @@
 package com.musicorbit.android.ui.screen.settings
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.os.PowerManager
-import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,11 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import com.musicorbit.android.i18n.LocalStrings
@@ -51,22 +41,6 @@ fun SettingsScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showCustomDialog   by remember { mutableStateOf(false) }
     var customInput        by remember { mutableStateOf("") }
-
-    // Battery-optimization exemption: read live status and refresh whenever the screen resumes
-    // (the user may toggle it in the system dialog and come straight back here).
-    val context = LocalContext.current
-    var isIgnoringBattery by remember { mutableStateOf(isIgnoringBatteryOptimizations(context)) }
-    var showBatteryDialog by remember { mutableStateOf(false) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                isIgnoringBattery = isIgnoringBatteryOptimizations(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
 
     val themeSubtitle = when (theme) {
         "LIGHT" -> strings.themeLight
@@ -113,10 +87,6 @@ fun SettingsScreen(
                 SettingsItem(Icons.Default.Language, strings.languageOption,
                     subtitle = languageSubtitle,
                     onClick  = { showLanguageDialog = true })
-
-                SettingsItem(Icons.Default.BatterySaver, strings.batteryOption,
-                    subtitle = if (isIgnoringBattery) strings.batteryStatusOn else strings.batteryStatusOff,
-                    onClick  = { showBatteryDialog = true })
 
                 SettingsItem(Icons.Default.Info, strings.aboutApp, onClick = onNavigateToAbout)
             }
@@ -274,47 +244,6 @@ fun SettingsScreen(
                 TextButton(onClick = { showCustomDialog = false }) { Text(strings.cancel) }
             }
         )
-    }
-
-    // ── Battery optimization exemption dialog ────────────────────────────────
-    if (showBatteryDialog) {
-        AlertDialog(
-            onDismissRequest = { showBatteryDialog = false },
-            title   = { Text(strings.batteryOption) },
-            text    = { Text(strings.batteryDesc) },
-            confirmButton = {
-                TextButton(onClick = {
-                    requestIgnoreBatteryOptimizations(context)
-                    showBatteryDialog = false
-                }) { Text(strings.save) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBatteryDialog = false }) { Text(strings.cancel) }
-            }
-        )
-    }
-}
-
-/** True when the app is already exempt from battery optimization (or on pre-Marshmallow). */
-private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
-    val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return false
-    return runCatching { pm.isIgnoringBatteryOptimizations(context.packageName) }.getOrDefault(false)
-}
-
-/**
- * Ask the system to exempt this app from battery optimization. Prefers the direct
- * ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS dialog; falls back to the global battery-optimization
- * settings list if the device has no such dialog (some OEM ROMs) or it cannot be launched.
- */
-private fun requestIgnoreBatteryOptimizations(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-    val pkg = context.packageName
-    val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-        .setData(Uri.parse("package:$pkg"))
-    if (runCatching { context.startActivity(direct) }.isSuccess) return
-    runCatching {
-        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
     }
 }
 
