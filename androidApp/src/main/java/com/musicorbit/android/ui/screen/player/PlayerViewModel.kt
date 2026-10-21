@@ -15,6 +15,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -34,6 +36,10 @@ class PlayerViewModel(
     private val _sleepTimerRemaining = MutableStateFlow<Long?>(null)
     val sleepTimerRemaining: StateFlow<Long?> = _sleepTimerRemaining.asStateFlow()
 
+    /** Set of favorite song ids, observed live so the heart icon and list stay in sync. */
+    val favorites: StateFlow<Set<Long>> = preferencesRepository.getFavorites()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     private var positionJob: Job? = null
     private var sleepTimerJob: Job? = null
     private var queue: List<Song> = emptyList()
@@ -46,8 +52,20 @@ class PlayerViewModel(
 
     init {
         restoreLastState()
+        bindPlaybackListener()
         startPositionPolling()
         observeSleepTimer()
+    }
+
+    /**
+     * The player pushes its own play/pause transitions, so the UI and the home-screen widget stay
+     * in sync immediately (and survive long idle periods) instead of relying on polling alone.
+     */
+    private fun bindPlaybackListener() {
+        audioPlayer.setPlaybackStateListener { isPlaying ->
+            _playbackState.update { it.copy(isPlaying = isPlaying) }
+            nowPlayingStore.setPlaying(isPlaying)
+        }
     }
 
     private fun restoreLastState() {
@@ -77,7 +95,7 @@ class PlayerViewModel(
                     )
                 }
                 publishNowPlaying()
-                delay(500L)
+                delay(250L)
             }
         }
     }
@@ -86,10 +104,11 @@ class PlayerViewModel(
     private fun publishNowPlaying() {
         val song = _playbackState.value.currentSong
         nowPlayingStore.update(
-            title     = song?.title ?: "",
-            artist    = song?.artist ?: "",
-            isPlaying = _playbackState.value.isPlaying,
-            hasSong   = song != null
+            title       = song?.title ?: "",
+            artist      = song?.artist ?: "",
+            isPlaying   = _playbackState.value.isPlaying,
+            hasSong     = song != null,
+            albumArtUri = song?.albumArtUri
         )
     }
 
@@ -108,6 +127,30 @@ class PlayerViewModel(
             songRepository.incrementPlayCount(songs[startIndex].id)
             preferencesRepository.saveLastPlayedSongId(songs[startIndex].id)
         }
+    }
+
+    /**
+     * Re-align the live playback queue to a newly sorted list (e.g. after the header sort order
+     * changes), keeping the current song and its position and preserving the play/pause state.
+     * This is what makes "Berurut" (Sequential) follow the header's "urutkan berdasarkan" choice.
+     */
+    fun resyncQueue(songs: List<Song>) {
+        val currentId = _playbackState.value.currentSong?.id ?: return
+        val newIndex  = songs.indexOfFirst { it.id == currentId }
+        if (newIndex < 0) return
+
+        val wasPlaying = _playbackState.value.isPlaying
+        val position   = audioPlayer.getCurrentPosition()
+        val items      = songs.map { it.filePath to it.id }
+
+        audioPlayer.setQueue(items, newIndex)
+        audioPlayer.setPlayMode(_playbackState.value.playMode)
+        if (position > 0) audioPlayer.seekTo(position)
+        // setQueue() auto-plays; restore the previous paused state if we weren't playing.
+        if (!wasPlaying) audioPlayer.pause()
+
+        queue = songs
+        _playbackState.update { it.copy(currentSong = songs[newIndex]) }
     }
 
     fun playSong(song: Song) {
@@ -131,6 +174,11 @@ class PlayerViewModel(
     }
 
     fun seekTo(positionMs: Long) { audioPlayer.seekTo(positionMs) }
+
+    /** Toggle the favorite state of a song, persisted via preferences. */
+    fun toggleFavorite(songId: Long) {
+        viewModelScope.launch { preferencesRepository.toggleFavorite(songId) }
+    }
 
     fun skipNext() {
         audioPlayer.skipNext()
@@ -226,6 +274,8 @@ class PlayerViewModel(
     override fun onCleared() {
         positionJob?.cancel()
         sleepTimerJob?.cancel()
+        // Detach the listener so a cleared ViewModel doesn't keep receiving player callbacks.
+        audioPlayer.setPlaybackStateListener(null)
         // NOTE: we intentionally do NOT call audioPlayer.release() here.
         // The ExoPlayer + MediaSession are owned by the AudioPlayer Koin singleton and are
         // shared with MusicService so playback can continue in the background. Releasing them

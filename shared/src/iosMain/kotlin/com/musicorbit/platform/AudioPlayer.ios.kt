@@ -21,4 +21,5 @@ actual class AudioPlayer {
     actual fun getDuration(): Long        = 0L
     actual fun isPlaying(): Boolean       = false
     actual fun release() {}
+    actual fun setPlaybackStateListener(listener: ((isPlaying: Boolean) -> Unit)?) {}
 }

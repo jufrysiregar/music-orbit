@@ -155,9 +155,10 @@ private fun GlassLinkButton(label: String, modifier: Modifier = Modifier, onClic
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text  = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
+                text     = label,
+                style    = MaterialTheme.typography.labelLarge,
+                color    = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }

@@ -1,14 +1,17 @@
 package com.musicorbit.android.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
@@ -102,8 +105,16 @@ fun MusicOrbitTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography  = MusicOrbitTypography,
-            shapes      = OrbitShapes,
-            content     = content
-        )
+            shapes      = OrbitShapes
+        ) {
+            // Root Surface gives every (transparent) Scaffold a correct LocalContentColor.
+            // Without it, Compose falls back to black, which is invisible in Dark Mode.
+            Surface(
+                modifier     = Modifier.fillMaxSize(),
+                color        = colorScheme.background,
+                contentColor = colorScheme.onBackground,
+                content      = content
+            )
+        }
     }
 }

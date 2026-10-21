@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -44,7 +45,6 @@ import com.musicorbit.android.ui.components.MiniPlayer
 import com.musicorbit.android.ui.components.OrbitBackground
 import com.musicorbit.android.ui.theme.OrbitCyan
 import com.musicorbit.android.ui.theme.OrbitViolet
-import com.musicorbit.android.ui.theme.OrbitMagenta
 import com.musicorbit.android.ui.theme.headlineFontFamily
 import com.musicorbit.android.ui.screen.player.PlayerViewModel
 import com.musicorbit.android.ui.util.pressableSpring
@@ -68,6 +68,12 @@ fun HomeScreen(
     var showSearch   by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
 
+    // Keep the live playback queue aligned with the header sort order (for "Berurut" mode).
+    DisposableEffect(viewModel, playerViewModel) {
+        viewModel.onQueueShouldFollowSort = { list -> playerViewModel.resyncQueue(list) }
+        onDispose { viewModel.onQueueShouldFollowSort = null }
+    }
+
     val focusRequester   = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -86,39 +92,27 @@ fun HomeScreen(
                 ) {
                     // ── Brand bar ────────────────────────────────────────────
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(auroraOverlay()),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.app_logo),
-                                contentDescription = "Music Orbit",
-                                modifier = Modifier.size(34.dp).clip(RoundedCornerShape(9.dp))
-                            )
-                        }
+                        // Clean, fully circular logo — no square frame or boxed container.
+                        Image(
+                            painter            = painterResource(R.drawable.app_logo),
+                            contentDescription = "Music Orbit",
+                            modifier           = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                        )
                         Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Music Orbit",
-                                style = TextStyle(
-                                    brush = Brush.horizontalGradient(
-                                        listOf(OrbitViolet, OrbitCyan)
-                                    ),
-                                    fontFamily = headlineFontFamily,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize   = 22.sp,
-                                    letterSpacing = (-0.5).sp
-                                )
+                        Text(
+                            text = "Music Orbit",
+                            style = TextStyle(
+                                brush = Brush.horizontalGradient(
+                                    listOf(OrbitViolet, OrbitCyan)
+                                ),
+                                fontFamily = headlineFontFamily,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize   = 22.sp,
+                                letterSpacing = (-0.5).sp
                             )
-                            Text(
-                                text  = strings.tagline,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        )
                         Spacer(Modifier.weight(1f))
                         IconToggle(Icons.Default.Search, strings.search) { showSearch = true }
                         Box {
@@ -219,7 +213,7 @@ fun HomeScreen(
                         modifier      = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             top    = innerPadding.calculateTopPadding() + 4.dp,
-                            bottom = 108.dp + innerPadding.calculateBottomPadding(),
+                            bottom = 148.dp + innerPadding.calculateBottomPadding(),
                             start  = 12.dp,
                             end    = 12.dp
                         )
@@ -323,10 +317,6 @@ private fun SongRow(song: Song, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)
     )
 }
-
-private fun auroraOverlay() = Brush.linearGradient(
-    listOf(OrbitViolet.copy(alpha = 0.35f), OrbitMagenta.copy(alpha = 0.25f))
-)
 
 private fun SortOrder.toLabel(strings: com.musicorbit.android.i18n.AppStrings): String = when (this) {
     SortOrder.DATE_ADDED  -> strings.sortNewest

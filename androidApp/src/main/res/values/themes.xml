@@ -8,9 +8,11 @@
         Theme.AppCompat.Light.NoActionBar is safe for minSdk 24.
     -->
     <style name="Theme.MusicOrbit" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
+        <!-- Follow the system surface instead of forcing black, so a Light-Mode cold start
+             never flashes a dark background. Compose paints the real theme on first frame. -->
+        <item name="android:windowBackground">?android:colorBackground</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

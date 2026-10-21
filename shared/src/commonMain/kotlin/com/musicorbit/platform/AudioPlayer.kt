@@ -22,4 +22,11 @@ expect class AudioPlayer {
     fun getDuration(): Long
     fun isPlaying(): Boolean
     fun release()
+
+    /**
+     * Registers a callback invoked immediately whenever playback starts/stops, driven by the
+     * platform player's own listener (not polling). Pass null to clear. Used to keep the UI and
+     * the home-screen widget in sync even after long idle periods or when the app is backgrounded.
+     */
+    fun setPlaybackStateListener(listener: ((isPlaying: Boolean) -> Unit)?)
 }

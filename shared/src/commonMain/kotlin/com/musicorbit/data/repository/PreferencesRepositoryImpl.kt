@@ -21,6 +21,7 @@ private object Keys {
     const val EQUALIZER_PRESET    = "eq_preset"
     const val EQUALIZER_BANDS     = "eq_bands"
     const val EQUALIZER_ENABLED   = "eq_enabled"
+    const val FAVORITES           = "favorites"
 }
 @OptIn(ExperimentalSettingsApi::class)
 class PreferencesRepositoryImpl(
@@ -110,5 +111,18 @@ class PreferencesRepositoryImpl(
 
     override suspend fun saveLanguage(lang: String) {
         settings.putString(Keys.LANGUAGE, lang)
+    }
+
+    // ── Favorites ──────────────────────────────────────────────────────────
+
+    override fun getFavorites(): Flow<Set<Long>> =
+        settings.getStringFlow(Keys.FAVORITES, "")
+            .map { raw -> raw.split(",").mapNotNull { it.trim().toLongOrNull() }.toSet() }
+
+    override suspend fun toggleFavorite(id: Long) {
+        val current = settings.getStringOrNull(Keys.FAVORITES).orEmpty()
+            .split(",").mapNotNull { it.trim().toLongOrNull() }.toMutableSet()
+        if (!current.add(id)) current.remove(id)
+        settings.putString(Keys.FAVORITES, current.joinToString(","))
     }
 }

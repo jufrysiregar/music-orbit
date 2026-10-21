@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,18 +27,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import com.musicorbit.android.ui.components.AlbumArtImage
-import com.musicorbit.android.ui.components.GlassCard
 import com.musicorbit.android.ui.components.OrbitBackground
 import com.musicorbit.android.ui.components.SeekBarSection
 import com.musicorbit.android.i18n.AppStrings
@@ -45,6 +47,7 @@ import com.musicorbit.android.i18n.LocalStrings
 import com.musicorbit.android.ui.navigation.OrbitKeys
 import com.musicorbit.android.ui.navigation.orbitSharedElement
 import com.musicorbit.android.ui.theme.OrbitViolet
+import com.musicorbit.android.ui.theme.OrbitCyan
 import com.musicorbit.android.ui.theme.auroraGradient
 import com.musicorbit.android.ui.util.pressableSpring
 import com.musicorbit.domain.model.PlayMode
@@ -61,7 +64,9 @@ fun MainPlayerScreen(
     val state          by viewModel.playbackState.collectAsStateWithLifecycle()
     val sleepRemaining by viewModel.sleepTimerRemaining.collectAsStateWithLifecycle()
     var showEditDialog by remember { mutableStateOf(false) }
+    var favBurst       by remember { mutableStateOf(0) }
     val strings        = LocalStrings.current
+    val favorites      by viewModel.favorites.collectAsStateWithLifecycle()
 
     BackHandler { onNavigateToHome() }
 
@@ -120,38 +125,60 @@ fun MainPlayerScreen(
                     )
                 }
 
-                // ── Song info (glass) ──────────────────────────────────────────
-                GlassCard(
-                    modifier       = Modifier.fillMaxWidth(),
-                    shape          = RoundedCornerShape(22.dp),
-                    contentPadding = 16.dp
+                // ── Song info (clean, unboxed) ──────────────────────────────────
+                val currentId  = state.currentSong?.id
+                val isFavorite = currentId != null && currentId in favorites
+                Column(
+                    modifier            = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text     = state.currentSong?.title ?: strings.noSong,
-                            style    = MaterialTheme.typography.headlineSmall,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Row(
-                            modifier          = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text     = state.currentSong?.artist ?: "–",
-                                style    = MaterialTheme.typography.bodyLarge,
-                                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(36.dp)) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit metadata", modifier = Modifier.size(20.dp))
+                    // Favorite + Edit toolbar, right-aligned above the title.
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            HeartBurst(trigger = favBurst)
+                            IconButton(
+                                onClick   = {
+                                    currentId?.let { viewModel.toggleFavorite(it) }
+                                    favBurst++
+                                },
+                                modifier  = Modifier.size(44.dp)
+                            ) {
+                                Icon(
+                                    imageVector        = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = strings.favorite,
+                                    tint               = if (isFavorite) Color(0xFFFF4D6D)
+                                                       else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier           = Modifier.size(26.dp)
+                                )
                             }
                         }
+                        IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(44.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit metadata", modifier = Modifier.size(22.dp))
+                        }
                     }
+
+                    Text(
+                        text      = state.currentSong?.title ?: strings.noSong,
+                        style     = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center,
+                        maxLines  = 2,
+                        overflow  = TextOverflow.Ellipsis,
+                        modifier  = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text      = state.currentSong?.artist ?: "–",
+                        style     = MaterialTheme.typography.bodyLarge,
+                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        maxLines  = 1,
+                        overflow  = TextOverflow.Ellipsis,
+                        modifier  = Modifier.fillMaxWidth()
+                    )
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -219,37 +246,30 @@ fun MainPlayerScreen(
                         Text(strings.lyrics)
                     }
 
-                    // Play-mode chip: tap cycles Sequential → Shuffle → Repeat One and applies it live.
+                    // Play-mode button: icon ONLY. Tap cycles Sequential → Shuffle → Repeat One live.
                     val (modeIcon, modeText) = when (state.playMode) {
                         PlayMode.REPEAT_ONE -> Icons.Default.RepeatOne to strings.modeRepeatOne
                         PlayMode.SHUFFLE    -> Icons.Default.Shuffle to strings.modeShuffle
                         PlayMode.SEQUENTIAL -> Icons.Default.Repeat to strings.modeSequential
                     }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier          = Modifier
+                    val modeActive = state.playMode != PlayMode.SEQUENTIAL
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
                             .clip(CircleShape)
                             .background(
-                                if (state.playMode == PlayMode.SEQUENTIAL)
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                                else
-                                    OrbitViolet.copy(alpha = 0.22f)
+                                if (!modeActive) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                                else if (state.playMode == PlayMode.SHUFFLE) OrbitCyan else OrbitViolet
                             )
-                            .pressableSpring(onClick = viewModel::cyclePlayMode)
+                            .pressableSpring(onClick = viewModel::cyclePlayMode),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             modeIcon,
                             contentDescription = "${strings.modePrefix}: $modeText",
-                            tint               = if (state.playMode == PlayMode.SEQUENTIAL)
-                                MaterialTheme.colorScheme.onSurface else OrbitViolet,
-                            modifier           = Modifier.padding(start = 12.dp).size(22.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            modeText,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(end = 14.dp)
+                            tint               = if (modeActive) Color.White
+                                else MaterialTheme.colorScheme.onSurface,
+                            modifier           = Modifier.size(26.dp)
                         )
                     }
                 }
@@ -281,7 +301,7 @@ private fun ControlIcon(
         modifier = Modifier
             .size(56.dp)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
             .pressableSpring(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -293,6 +313,61 @@ private fun ControlIcon(
         )
     }
 }
+
+/**
+ * One-shot "floating hearts" particle burst anchored above the favorite button. Replays every
+ * time [trigger] increments. Purely decorative — draws outside its bounds, no layout impact.
+ */
+@Composable
+private fun HeartBurst(trigger: Int, modifier: Modifier = Modifier) {
+    if (trigger <= 0) return
+
+    val totalMs = 1100f
+    val progress = remember(trigger) { Animatable(0f) }
+    val hearts = remember(trigger) {
+        val rnd = kotlin.random.Random(trigger * 31L + 7L)
+        List(12) {
+            HeartSpec(
+                driftX = rnd.nextFloat() * 2f - 1f,      // -1..1 horizontal spread
+                rise   = 90f + rnd.nextFloat() * 80f,    // dp travelled upward
+                size   = 14f + rnd.nextFloat() * 12f,    // dp icon size
+                delay  = rnd.nextFloat() * 150f          // stagger, ms
+            )
+        }
+    }
+
+    LaunchedEffect(trigger) {
+        progress.animateTo(1f, animationSpec = tween(durationMillis = totalMs.toInt()))
+    }
+
+    Box(
+        modifier         = modifier.size(width = 64.dp, height = 170.dp),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        hearts.forEach { h ->
+            val local = ((progress.value * totalMs) - h.delay).coerceAtLeast(0f) / (totalMs - h.delay)
+            if (local <= 0f) return@forEach
+            val yDp = -local * h.rise
+            val xDp = h.driftX * 22f * local
+            Icon(
+                imageVector        = Icons.Default.Favorite,
+                contentDescription = null,
+                tint               = Color(0xFFFF4D6D).copy(alpha = (1f - local).coerceIn(0f, 1f)),
+                modifier           = Modifier
+                    .size(h.size.dp)
+                    .offset { IntOffset(xDp.dp.roundToPx(), yDp.dp.roundToPx()) }
+                    .scale(0.7f + 0.3f * local)
+            )
+        }
+    }
+}
+
+private class HeartSpec(
+    val driftX: Float,
+    val rise: Float,
+    val size: Float,
+    val delay: Float
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -31,6 +32,9 @@ fun OrbitBackground(
     showStars: Boolean = true
 ) {
     val isDark = LocalOrbitDark.current
+    // Solid theme base so a transparent Scaffold never reveals the black window behind it
+    // (this was the Light-Mode "black bleed"). Dark mode → deep space; Light mode → clean bright surface.
+    val baseColor = MaterialTheme.colorScheme.background
 
     // Star positions are generated once from a fixed seed so the field is stable.
     val stars = rememberStableStars(count = if (isDark) 60 else 34)
@@ -48,6 +52,9 @@ fun OrbitBackground(
 
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {
+            // 1) Opaque base fill.
+            drawRect(color = baseColor)
+
             val w = size.width
             val h = size.height
 

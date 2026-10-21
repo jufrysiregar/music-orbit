@@ -32,9 +32,11 @@ fun SettingsScreen(
     val strings      = LocalStrings.current
     val theme        by viewModel.theme.collectAsStateWithLifecycle()
     val sleepMinutes by viewModel.sleepTimerMinutes.collectAsStateWithLifecycle()
+    val language     by viewModel.language.collectAsStateWithLifecycle()
 
-    var showThemeDialog by remember { mutableStateOf(false) }
-    var showTimerDialog by remember { mutableStateOf(false) }
+    var showThemeDialog    by remember { mutableStateOf(false) }
+    var showTimerDialog    by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     val themeSubtitle = when (theme) {
         "LIGHT" -> strings.themeLight
@@ -43,6 +45,8 @@ fun SettingsScreen(
     }
     val sleepSubtitle =
         if (sleepMinutes == 0) strings.sleepOff else "$sleepMinutes ${strings.minutesUnit}"
+    val languageSubtitle =
+        if (language == "en") strings.langEnglish else strings.langIndonesian
 
     Box(modifier = Modifier.fillMaxSize()) {
         OrbitBackground()
@@ -76,6 +80,10 @@ fun SettingsScreen(
                     subtitle = themeSubtitle,
                     onClick  = { showThemeDialog = true })
 
+                SettingsItem(Icons.Default.Language, strings.languageOption,
+                    subtitle = languageSubtitle,
+                    onClick  = { showLanguageDialog = true })
+
                 SettingsItem(Icons.Default.Info, strings.aboutApp, onClick = onNavigateToAbout)
             }
         }
@@ -103,6 +111,38 @@ fun SettingsScreen(
                         ) {
                             RadioButton(selected = theme == value, onClick = {
                                 viewModel.saveTheme(value); showThemeDialog = false
+                            })
+                            Spacer(Modifier.width(8.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // ── Language dialog ─────────────────────────────────────────────────────
+    if (showLanguageDialog) {
+        val options = listOf(
+            "id" to strings.langIndonesian,
+            "en" to strings.langEnglish
+        )
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title   = { Text(strings.languageTitle) },
+            text    = {
+                Column {
+                    options.forEach { (value, label) ->
+                        Row(
+                            modifier          = Modifier.fillMaxWidth().clickable {
+                                viewModel.saveLanguage(value)
+                                showLanguageDialog = false
+                            }.padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = language == value, onClick = {
+                                viewModel.saveLanguage(value); showLanguageDialog = false
                             })
                             Spacer(Modifier.width(8.dp))
                             Text(label)

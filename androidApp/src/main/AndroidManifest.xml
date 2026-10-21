@@ -18,6 +18,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <!-- Keeps the CPU awake during background playback so audio survives screen-off / Doze -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- Notification permission required on Android 13+ so the media notification can appear -->
     <uses-permission
         android:name="android.permission.POST_NOTIFICATIONS"

@@ -2,6 +2,7 @@ package com.musicorbit.platform
 
 import android.content.Context
 import android.net.Uri
+import android.os.PowerManager
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -17,6 +18,30 @@ actual class AudioPlayer(private val context: Context) {
         MediaSession.Builder(context, exoPlayer)
             .setId("MusicOrbitSession")
             .build()
+
+    // PARTIAL_WAKE_LOCK keeps the CPU awake while audio is playing, so playback doesn't stall
+    // once the screen turns off / the device enters Doze. Reference-counted off for simple hold/release.
+    private val wakeLock: PowerManager.WakeLock by lazy {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MusicOrbit:PlaybackWakeLock")
+            .apply { setReferenceCounted(false) }
+    }
+
+    private var playbackListener: ((Boolean) -> Unit)? = null
+
+    init {
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) {
+                    // 10h safety timeout so a leaked lock can never keep the CPU awake forever.
+                    if (!wakeLock.isHeld) wakeLock.acquire(10L * 60L * 60L * 1000L)
+                } else if (wakeLock.isHeld) {
+                    wakeLock.release()
+                }
+                playbackListener?.invoke(isPlaying)
+            }
+        })
+    }
 
     /**
      * Exposes the singleton [MediaSession] so [com.musicorbit.android.service.MusicService]
@@ -82,7 +107,13 @@ actual class AudioPlayer(private val context: Context) {
 
     actual fun isPlaying(): Boolean = exoPlayer.isPlaying
 
+    actual fun setPlaybackStateListener(listener: ((isPlaying: Boolean) -> Unit)?) {
+        playbackListener = listener
+    }
+
     actual fun release() {
+        if (wakeLock.isHeld) runCatching { wakeLock.release() }
+        playbackListener = null
         mediaSession.release()
         exoPlayer.release()
     }

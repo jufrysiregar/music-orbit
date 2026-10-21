@@ -77,7 +77,13 @@ class AppStrings(
     // Permission / landing
     val permissionTitle: String,
     val permissionBody: String,
-    val languageOption: String
+    val languageOption: String,
+    // Language dialog
+    val languageTitle: String,
+    val langIndonesian: String,
+    val langEnglish: String,
+    // Favorites
+    val favorite: String
 )
 
 internal val IndonesianStrings = AppStrings(
@@ -103,9 +109,9 @@ internal val IndonesianStrings = AppStrings(
     pause = "Jeda",
     equalizer = "Equalizer",
     lyrics = "Lirik",
-    modeSequential = "Urut",
+    modeSequential = "Berurut",
     modeShuffle = "Acak",
-    modeRepeatOne = "Ulangi satu",
+    modeRepeatOne = "Sekali",
     modePrefix = "Mode",
     editInfoTitle = "Edit Informasi Lagu",
     songTitleLabel = "Judul Lagu",
@@ -127,7 +133,7 @@ internal val IndonesianStrings = AppStrings(
     themeTitle = "Tema",
     themeLight = "Terang",
     themeDark = "Gelap",
-    themeSystem = "Ikuti Sistem",
+    themeSystem = "Sistem",
     aboutApp = "Tentang Aplikasi",
     pickTheme = "Pilih Tema",
     sleepTitle = "Waktu Tidur",
@@ -141,7 +147,11 @@ internal val IndonesianStrings = AppStrings(
     bandWord = "Band",
     permissionTitle = "Izin Akses Musik",
     permissionBody = "Music Orbit perlu izin untuk membaca file audio di perangkat kamu supaya bisa menampilkan dan memutar musik, serta menampilkan kontrol di notifikasi.",
-    languageOption = "Bahasa"
+    languageOption = "Bahasa",
+    languageTitle = "Bahasa",
+    langIndonesian = "Bahasa Indonesia",
+    langEnglish = "English",
+    favorite = "Favorit"
 )
 
 internal val EnglishStrings = AppStrings(
@@ -205,7 +215,11 @@ internal val EnglishStrings = AppStrings(
     bandWord = "Band",
     permissionTitle = "Music Access Permission",
     permissionBody = "Music Orbit needs permission to read audio files on your device so it can show and play music, and display controls in the notification.",
-    languageOption = "Language"
+    languageOption = "Language",
+    languageTitle = "Language",
+    langIndonesian = "Bahasa Indonesia",
+    langEnglish = "English",
+    favorite = "Favorite"
 )
 
 /** CompositionLocal holding the active string table. Defaults to Indonesian. */

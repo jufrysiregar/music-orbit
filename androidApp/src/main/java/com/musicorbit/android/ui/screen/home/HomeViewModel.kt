@@ -27,23 +27,38 @@ class HomeViewModel(
     private val _sortOrder = MutableStateFlow(SortOrder.DATE_ADDED)
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
 
+    // Raw, unsorted scan result cached so a sort change can rebuild the sequential queue
+    // synchronously and deterministically (no race against the Flow emission).
+    private var rawSongs: List<Song> = emptyList()
+
+    /**
+     * Invoked when the header sort order changes, delivering the freshly sorted list so the
+     * live playback queue can re-align to it (keeps "Berurut" in sync with "urutkan berdasarkan").
+     */
+    var onQueueShouldFollowSort: ((List<Song>) -> Unit)? = null
+
     val songs: StateFlow<List<Song>> = combine(
         getSortedSongsUseCase(),
         _searchQuery,
         _sortOrder
     ) { allSongs, query, sort ->
-        val filtered = if (query.isBlank()) allSongs
-        else allSongs.filter {
+        rawSongs = allSongs
+        sortAndFilter(allSongs, query, sort)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private fun sortAndFilter(all: List<Song>, query: String, sort: SortOrder): List<Song> {
+        val filtered = if (query.isBlank()) all
+        else all.filter {
             it.title.contains(query, ignoreCase = true) ||
             it.artist.contains(query, ignoreCase = true)
         }
-        when (sort) {
+        return when (sort) {
             SortOrder.DATE_ADDED  -> filtered.sortedByDescending { it.dateAdded }
             SortOrder.PLAY_COUNT  -> filtered.sortedByDescending { it.playCount }
             SortOrder.TITLE       -> filtered.sortedBy { it.title.lowercase() }
             SortOrder.ARTIST      -> filtered.sortedBy { it.artist.lowercase() }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }
 
     init {
         // Auto-scan on first launch so the list is populated immediately
@@ -55,6 +70,8 @@ class HomeViewModel(
     fun onSortOrderChange(order: SortOrder) {
         _sortOrder.value = order
         viewModelScope.launch { preferencesRepository.saveSortOrder(order) }
+        // Immediately realign the live playback queue to the new sorted order.
+        onQueueShouldFollowSort?.invoke(sortAndFilter(rawSongs, _searchQuery.value, order))
     }
 
     fun triggerScan() {

@@ -24,7 +24,8 @@ class NowPlayingStore(private val context: Context) {
         val title: String = "",
         val artist: String = "",
         val isPlaying: Boolean = false,
-        val hasSong: Boolean = false
+        val hasSong: Boolean = false,
+        val albumArtUri: String? = null
     )
 
     private val _state = MutableStateFlow(NowPlaying())
@@ -41,13 +42,20 @@ class NowPlayingStore(private val context: Context) {
      * Publish a new snapshot. When the visible fields actually change we refresh every
      * attached widget instance so the home screen stays in sync with playback.
      */
-    fun update(title: String, artist: String, isPlaying: Boolean, hasSong: Boolean) {
+    fun update(
+        title: String,
+        artist: String,
+        isPlaying: Boolean,
+        hasSong: Boolean,
+        albumArtUri: String? = null
+    ) {
         val current = _state.value
         val next = NowPlaying(
-            title     = title,
-            artist    = artist,
-            isPlaying = isPlaying,
-            hasSong   = hasSong
+            title       = title,
+            artist      = artist,
+            isPlaying   = isPlaying,
+            hasSong     = hasSong,
+            albumArtUri = albumArtUri
         )
         if (current != next) {
             _state.value = next

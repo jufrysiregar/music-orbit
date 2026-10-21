@@ -43,4 +43,8 @@ interface PreferencesRepository {
     // Values: "id" | "en"
     fun getLanguage(): Flow<String>
     suspend fun saveLanguage(lang: String)
+
+    // ── Favorites ──────────────────────────────────────────────────────────
+    fun getFavorites(): Flow<Set<Long>>
+    suspend fun toggleFavorite(id: Long)
 }
