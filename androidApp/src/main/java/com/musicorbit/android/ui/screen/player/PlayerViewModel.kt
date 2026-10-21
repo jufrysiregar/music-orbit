@@ -10,6 +10,7 @@ import com.musicorbit.domain.repository.SongRepository
 import com.musicorbit.platform.AudioPlayer
 import com.musicorbit.platform.EqualizerEngine
 import com.musicorbit.android.widget.NowPlayingStore
+import com.musicorbit.android.ui.util.EqualizerCodec
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,11 +60,28 @@ class PlayerViewModel(
         }
     }
 
-    /** Exposed for EqualizerViewModel to initialize the EQ with correct session ID. */
+    /** Exposed for EqualizerViewModel to initialize the EQ with the correct session ID. */
     val audioSessionId: Int
-        get() = runCatching {
-            audioPlayer.javaClass.getMethod("getAudioSessionId").invoke(audioPlayer) as? Int
-        }.getOrNull() ?: 0
+        get() = runCatching { audioPlayer.audioSessionId }.getOrDefault(0)
+
+    /**
+     * Auto-attach the Equalizer to ExoPlayer's live audio session as soon as the player exists and
+     * restore the persisted enabled/preset/band state — so the effect is bound without opening the
+     * Equalizer screen or toggling the switch repeatedly. Safe to call more than once (idempotent).
+     */
+    private fun restoreEqualizer() {
+        viewModelScope.launch {
+            val sessionId = audioSessionId
+            if (sessionId == 0) return@launch
+            equalizerEngine.initialize(sessionId)
+            val enabled = preferencesRepository.getEqualizerEnabled().first()
+            val preset  = preferencesRepository.getEqualizerPreset().first()
+            val bands   = EqualizerCodec.fromJson(preferencesRepository.getEqualizerBands().first())
+            if (bands.isNotEmpty()) bands.forEachIndexed { i, level -> equalizerEngine.setBandLevel(i, level) }
+            else equalizerEngine.applyPreset(preset)
+            equalizerEngine.setEnabled(enabled)
+        }
+    }
 
     init {
         restoreLastState()
@@ -73,6 +91,7 @@ class PlayerViewModel(
         viewModelScope.launch { rebuildQueueFromPlayer() }
         startPositionPolling()
         observeSleepTimer()
+        restoreEqualizer()
     }
 
     /**

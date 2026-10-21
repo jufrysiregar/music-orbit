@@ -16,5 +16,6 @@ expect class EqualizerEngine {
     fun setBandLevel(bandIndex: Int, levelMilliDb: Int)
     fun applyPreset(presetName: String)
     fun setEnabled(enabled: Boolean)
+    fun isEnabled(): Boolean
     fun release()
 }

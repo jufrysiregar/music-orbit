@@ -202,30 +202,23 @@ fun MainPlayerScreen(
                 ) {
                     ControlIcon(Icons.Default.SkipPrevious, strings.previous, size = 32.dp) { viewModel.skipPrevious() }
 
-                    // Play/Pause styling is DISTINCT per state (fixed 80dp box => zero layout
-                    // shift, instant icon swap => no flicker/morph). Driven by playWhenReady so it
-                    // never flickers during brief buffering, identical in light & dark:
-                    //  • Playing : colored circular gradient container + white Pause bars.
-                    //  • Paused  : clean Play triangle tinted with the primary color, NO container.
+                    // Play and Pause share the EXACT same circular container (aurora gradient +
+                    // glow) in BOTH states — only the glyph swaps. Fixed 80dp box + instant swap
+                    // => no layout shift / flicker, and identical in Light & Dark (theme gradient).
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .then(
-                                if (state.isPlaying)
-                                    Modifier
-                                        .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
-                                        .clip(CircleShape)
-                                        .background(auroraGradient(), CircleShape)
-                                else Modifier
-                            )
+                            .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
+                            .clip(CircleShape)
+                            .background(auroraGradient(), CircleShape)
                             .pressableSpring(pressedScale = 0.92f, onClick = viewModel::togglePlayPause),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (state.isPlaying) strings.pause else strings.play,
-                            tint               = if (state.isPlaying) Color.White else MaterialTheme.colorScheme.primary,
-                            modifier           = Modifier.size(if (state.isPlaying) 46.dp else 40.dp)
+                            tint               = Color.White,
+                            modifier           = Modifier.size(42.dp)
                         )
                     }
 

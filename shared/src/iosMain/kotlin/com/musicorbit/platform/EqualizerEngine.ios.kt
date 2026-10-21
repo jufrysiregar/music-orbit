@@ -12,5 +12,6 @@ actual class EqualizerEngine {
     actual fun setBandLevel(bandIndex: Int, levelMilliDb: Int) {}
     actual fun applyPreset(presetName: String) {}
     actual fun setEnabled(enabled: Boolean) {}
+    actual fun isEnabled(): Boolean = false
     actual fun release() {}
 }

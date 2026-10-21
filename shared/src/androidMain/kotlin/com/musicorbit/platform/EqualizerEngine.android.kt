@@ -7,13 +7,20 @@ actual class EqualizerEngine {
     private var equalizer: Equalizer? = null
     private var minLevel: Int = -1500
     private var maxLevel: Int = 1500
+    // Session id the effect is currently attached to, so re-initializing the same session is a no-op.
+    private var boundSessionId: Int = -1
 
     actual fun initialize(audioSessionId: Int) {
+        // Idempotent: if we are already bound to this exact session, keep the existing effect and
+        // its band levels. Releasing + recreating on every EqualizerScreen visit reset the bands and
+        // forced enabled=true, which is what made the switch show OFF while the effect was actually
+        // on and required repeated ON/OFF toggling to "bind".
+        if (equalizer != null && boundSessionId == audioSessionId) return
         runCatching { equalizer?.release() }
-        equalizer = runCatching {
-            Equalizer(0, audioSessionId).apply { enabled = true }
-        }.getOrNull()
+        equalizer = runCatching { Equalizer(0, audioSessionId) }.getOrNull()
+        boundSessionId = audioSessionId
         equalizer?.let { eq ->
+            eq.enabled = false // caller applies the persisted enabled state
             val range = eq.bandLevelRange  // [min, max] in mB
             if (range.size >= 2) {
                 minLevel = range[0].toInt()
@@ -38,6 +45,7 @@ actual class EqualizerEngine {
 
     actual fun setBandLevel(bandIndex: Int, levelMilliDb: Int) {
         val eq = equalizer ?: return
+        if (bandIndex < 0 || bandIndex >= eq.numberOfBands) return // persisted bands from another device
         val clamped = levelMilliDb.coerceIn(minLevel, maxLevel)
         eq.setBandLevel(bandIndex.toShort(), clamped.toShort())
     }
@@ -60,6 +68,8 @@ actual class EqualizerEngine {
     actual fun setEnabled(enabled: Boolean) {
         equalizer?.enabled = enabled
     }
+
+    actual fun isEnabled(): Boolean = equalizer?.enabled ?: false
 
     actual fun release() {
         runCatching { equalizer?.release() }

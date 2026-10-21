@@ -7,13 +7,16 @@ import com.musicorbit.domain.model.SortOrder
 import com.musicorbit.domain.repository.PreferencesRepository
 import com.musicorbit.domain.usecase.GetSortedSongsUseCase
 import com.musicorbit.domain.usecase.ScanMusicUseCase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HomeViewModel(
     private val getSortedSongsUseCase: GetSortedSongsUseCase,
@@ -44,7 +47,11 @@ class HomeViewModel(
     ) { allSongs, query, sort ->
         rawSongs = allSongs
         sortAndFilter(allSongs, query, sort)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }
+        // Sort/filter a potentially large library OFF the main thread. Doing it on Main blocked the
+        // UI thread during a sort change, which is what made the playing audio hitch.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private fun sortAndFilter(all: List<Song>, query: String, sort: SortOrder): List<Song> {
         val filtered = if (query.isBlank()) all
@@ -69,9 +76,15 @@ class HomeViewModel(
 
     fun onSortOrderChange(order: SortOrder) {
         _sortOrder.value = order
-        viewModelScope.launch { preferencesRepository.saveSortOrder(order) }
-        // Immediately realign the live playback queue to the new sorted order.
-        onQueueShouldFollowSort?.invoke(sortAndFilter(rawSongs, _searchQuery.value, order))
+        viewModelScope.launch {
+            preferencesRepository.saveSortOrder(order)
+            // Compute the new order off the main thread, then hop back to Main only to reorder the
+            // ExoPlayer window (which must run on the player's own thread).
+            val sorted = withContext(Dispatchers.Default) {
+                sortAndFilter(rawSongs, _searchQuery.value, order)
+            }
+            onQueueShouldFollowSort?.invoke(sorted)
+        }
     }
 
     fun triggerScan() {

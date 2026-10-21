@@ -93,27 +93,20 @@ fun MiniPlayer(
 
         Spacer(Modifier.width(2.dp))
 
-        // Play / Pause with DISTINCT per-state styling (fixed 46dp box, instant swap, no flicker).
-        // Driven by playWhenReady so it matches the main player and never flickers while buffering:
-        //  • Playing : colored circular background + onPrimary Pause bars.
-        //  • Paused  : clean primary Play triangle, NO circular background.
+        // Play and Pause share the SAME circular container (primary fill) in both states; only the
+        // glyph swaps. Fixed 46dp box + instant swap => no shift / flicker, consistent Light & Dark.
         Box(
             modifier = Modifier
                 .size(46.dp)
-                .then(
-                    if (isPlaying) Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                    else Modifier
-                )
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary)
                 .pressableSpring(pressedScale = 0.9f, onClick = onTogglePlayPause),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector        = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = if (isPlaying) strings.pause else strings.play,
-                tint               = if (isPlaying) MaterialTheme.colorScheme.onPrimary
-                                     else MaterialTheme.colorScheme.primary
+                tint               = MaterialTheme.colorScheme.onPrimary
             )
         }
 

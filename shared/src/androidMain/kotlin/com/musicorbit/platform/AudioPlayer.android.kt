@@ -117,15 +117,38 @@ actual class AudioPlayer(private val context: Context) {
 
     actual fun reorderQueue(items: List<Pair<String, Long>>, newIndex: Int) {
         if (items.isEmpty()) return
+        val targetIds  = items.map { it.second }
+        val currentIds = (0 until exoPlayer.mediaItemCount)
+            .map { exoPlayer.getMediaItemAt(it).mediaId?.toLongOrNull() }
+
+        // Same set of tracks, only the ORDER changed (the normal sort case): reorder the live window
+        // with moveMediaItem so the currently playing media source is NEVER re-created. setMediaItems
+        // would rebuild the window and re-buffer the active item — the audible "kesedak" on sort.
+        val sameSet = currentIds.size == targetIds.size &&
+            currentIds.all { it != null } &&
+            currentIds.toSet() == targetIds.toSet()
+        if (sameSet) {
+            val working = currentIds.toMutableList()
+            for (i in targetIds.indices) {
+                val want = targetIds[i]
+                val pos  = working.indexOf(want)
+                if (pos in 0 until working.size && pos != i) {
+                    exoPlayer.moveMediaItem(pos, i)
+                    val moved = working.removeAt(pos)
+                    working.add(i, moved)
+                }
+            }
+            return
+        }
+
+        // Different set (rare) — replace the window WITHOUT prepare()/play() so playWhenReady is
+        // preserved and the swap stays as smooth as possible.
         val mediaItems = items.map { (filePath, songId) ->
             MediaItem.Builder()
                 .setMediaId(songId.toString())
                 .setUri(Uri.parse(filePath))
                 .build()
         }
-        // Replace the window in place and jump to the re-indexed current item WITHOUT calling
-        // prepare()/play(). The player is already prepared and playWhenReady is preserved, so the
-        // currently playing audio keeps flowing smoothly across a sort change (no reload stutter).
         exoPlayer.setMediaItems(mediaItems, newIndex.coerceIn(0, mediaItems.size - 1), exoPlayer.currentPosition)
     }
 
