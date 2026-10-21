@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import androidx.compose.runtime.Composable
@@ -70,6 +72,8 @@ class MusicWidget : GlanceAppWidget() {
         val playIcon = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
         val albumArt = loadAlbumArt(context, snapshot.albumArtUri)
         val artProvider = albumArt?.let { ImageProvider(it) } ?: ImageProvider(R.drawable.app_logo)
+        // Real launcher icon for the top-right badge (matches the app's drawer icon exactly).
+        val launcherProvider = loadLauncherIcon(context)?.let { ImageProvider(it) } ?: ImageProvider(R.drawable.app_logo)
 
         provideContent {
             val ctx = LocalContext.current
@@ -130,16 +134,16 @@ class MusicWidget : GlanceAppWidget() {
 
                     Spacer(GlanceModifier.width(6.dp))
 
-                    // App launcher icon → opens MainActivity.
+                    // App launcher icon (circular) → opens the Main Player via deep link.
                     Box(
                         modifier = GlanceModifier
                             .size(34.dp)
-                            .cornerRadius(8.dp)
+                            .cornerRadius(17.dp)
                             .clickable(openPlayerAction),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
-                            provider           = ImageProvider(R.drawable.app_logo),
+                            provider           = launcherProvider,
                             contentDescription = "Open Music Orbit"
                         )
                     }
@@ -267,4 +271,21 @@ private fun loadAlbumArt(context: Context, uri: String?, maxPx: Int = 256): Bitm
             BitmapFactory.decodeStream(it, null, opts)
         }
     }.getOrNull()
+}
+
+/**
+ * Render the app's actual launcher icon (as shown in the drawer) to a [Bitmap] for the widget
+ * badge. Falls back to null on any failure so the caller can use the bundled app_logo.
+ */
+private fun loadLauncherIcon(context: Context, sizePx: Int = 128): Bitmap? = runCatching {
+    val drawable = context.packageManager.getApplicationIcon(context.packageName)
+    drawableToBitmap(drawable, sizePx)
+}.getOrNull()
+
+private fun drawableToBitmap(drawable: Drawable, size: Int): Bitmap {
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    drawable.setBounds(0, 0, canvas.width, canvas.height)
+    drawable.draw(canvas)
+    return bitmap
 }

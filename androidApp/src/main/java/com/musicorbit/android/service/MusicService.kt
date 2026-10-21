@@ -55,15 +55,21 @@ class MusicService : MediaSessionService() {
     }
 
     /**
-     * Keep playback alive when the user dismisses the app from Recents. Because Media3 promotes
-     * the service to the foreground while playing, removing the task should NOT stop the music.
-     * We only tear the service down when nothing is actually playing.
+     * Keep playback alive when the user dismisses the app from Recents — matching every other
+     * music app. The default MediaSessionService.onTaskRemoved() stops the service whenever no
+     * MediaController is bound, and our UI drives the shared ExoPlayer directly (never binds a
+     * controller), so calling super here while playing is precisely what kills the music.
+     *
+     * Therefore: while playing we intentionally do NOT call super — the service stays foreground
+     * and audio continues; the user can still stop it from the notification "X" or the home widget.
+     * Only when nothing is playing do we tear the service down.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (!audioPlayer.isPlaying()) {
             stopSelf()
+            super.onTaskRemoved(rootIntent)
         }
-        super.onTaskRemoved(rootIntent)
+        // else: keep running in the background with the ongoing media notification.
     }
 
     override fun onDestroy() {

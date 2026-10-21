@@ -202,23 +202,29 @@ fun MainPlayerScreen(
                 ) {
                     ControlIcon(Icons.Default.SkipPrevious, strings.previous, size = 32.dp) { viewModel.skipPrevious() }
 
-                    // Play/Pause: ONE consistent circular gradient container shared by both the Play
-                    // (triangle) and Pause (bars) states. Fixed 80dp box => no layout shift; the
-                    // icon swaps instantly (no morph) with a high-contrast white glyph.
+                    // Play/Pause styling is DISTINCT per state (fixed 80dp box => zero layout
+                    // shift, instant icon swap => no flicker/morph):
+                    //  • Play  (currently paused, triangle shown): colored circular gradient container.
+                    //  • Pause (currently playing, bars shown): clean icon, NO circular background.
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
-                            .clip(CircleShape)
-                            .background(auroraGradient(), CircleShape)
+                            .then(
+                                if (!state.isPlaying)
+                                    Modifier
+                                        .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
+                                        .clip(CircleShape)
+                                        .background(auroraGradient(), CircleShape)
+                                else Modifier
+                            )
                             .pressableSpring(pressedScale = 0.92f, onClick = viewModel::togglePlayPause),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (state.isPlaying) strings.pause else strings.play,
-                            tint               = Color.White,
-                            modifier           = Modifier.size(40.dp)
+                            tint               = if (state.isPlaying) MaterialTheme.colorScheme.primary else Color.White,
+                            modifier           = Modifier.size(if (state.isPlaying) 46.dp else 40.dp)
                         )
                     }
 

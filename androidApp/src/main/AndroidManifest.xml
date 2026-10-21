@@ -21,6 +21,9 @@
     <!-- Keeps the CPU awake during background playback so audio survives screen-off / Doze -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Lets Settings request an exemption from battery optimization for reliable background playback -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <!-- Notification permission required on Android 13+ so the media notification can appear -->
     <uses-permission
         android:name="android.permission.POST_NOTIFICATIONS"

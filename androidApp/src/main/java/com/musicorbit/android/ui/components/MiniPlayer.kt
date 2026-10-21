@@ -93,19 +93,26 @@ fun MiniPlayer(
 
         Spacer(Modifier.width(2.dp))
 
-        // Play / Pause: consistent circular container in BOTH states (mode-aware accent).
+        // Play / Pause with DISTINCT per-state styling (fixed 46dp box, instant swap, no flicker):
+        //  • Play  (paused, triangle): colored circular background.
+        //  • Pause (playing, bars):    clean icon, NO circular background.
         Box(
             modifier = Modifier
                 .size(46.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary)
+                .then(
+                    if (!isPlaying) Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                    else Modifier
+                )
                 .pressableSpring(pressedScale = 0.9f, onClick = onTogglePlayPause),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector        = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = if (isPlaying) strings.pause else strings.play,
-                tint               = MaterialTheme.colorScheme.onPrimary
+                tint               = if (isPlaying) MaterialTheme.colorScheme.primary
+                                     else MaterialTheme.colorScheme.onPrimary
             )
         }
 

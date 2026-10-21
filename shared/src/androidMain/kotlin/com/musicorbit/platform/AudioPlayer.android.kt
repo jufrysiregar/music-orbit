@@ -1,6 +1,8 @@
 package com.musicorbit.platform
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import androidx.media3.common.AudioAttributes
@@ -28,10 +30,28 @@ actual class AudioPlayer(private val context: Context) {
         setHandleAudioBecomingNoisy(true)
     }
 
-    private val mediaSession: MediaSession =
-        MediaSession.Builder(context, exoPlayer)
-            .setId("MusicOrbitSession")
-            .build()
+    private val mediaSession: MediaSession = run {
+        val builder = MediaSession.Builder(context, exoPlayer).setId("MusicOrbitSession")
+        // The notification's content intent (tap anywhere on the media card) opens the running app
+        // straight into the player. We resolve the launcher intent by package so the shared module
+        // doesn't need to reference MainActivity.
+        val launchIntent = context.packageManager
+            .getLaunchIntentForPackage(context.packageName)
+            ?.apply {
+                putExtra("EXTRA_OPEN_PLAYER", true)
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+        if (launchIntent != null) {
+            val pi = PendingIntent.getActivity(
+                context,
+                0,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.setSessionActivity(pi)
+        }
+        builder.build()
+    }
 
     // PARTIAL_WAKE_LOCK keeps the CPU awake while audio is playing, so playback doesn't stall
     // once the screen turns off / the device enters Doze. Reference-counted off for simple hold/release.
@@ -122,6 +142,13 @@ actual class AudioPlayer(private val context: Context) {
 
     /** Media id of the item currently loaded in the player, i.e. the song's database id. */
     fun getCurrentMediaId(): Long? = exoPlayer.currentMediaItem?.mediaId?.toLongOrNull()
+
+    /** Ordered song ids of the current playback window, used to rebuild the ViewModel queue on re-entry. */
+    fun getQueueIds(): List<Long> =
+        (0 until exoPlayer.mediaItemCount).mapNotNull { i ->
+            exoPlayer.getMediaItemAt(i).mediaId?.toLongOrNull()
+        }
+
     actual fun getCurrentQueueIndex(): Int = exoPlayer.currentMediaItemIndex
 
     actual fun setPlayMode(mode: PlayMode) {

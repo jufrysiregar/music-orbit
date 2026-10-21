@@ -68,8 +68,47 @@ class PlayerViewModel(
     init {
         restoreLastState()
         bindPlaybackListener()
+        // If audio is already playing in the background (service survived, this ViewModel was
+        // recreated), pull the live queue/state so controls are immediately interactive.
+        viewModelScope.launch { rebuildQueueFromPlayer() }
         startPositionPolling()
         observeSleepTimer()
+    }
+
+    /**
+     * Called on Activity/`onResume` re-entry. Re-points the shared player callbacks at this
+     * ViewModel instance and re-synchronizes queue + playback state, fixing the bug where every
+     * UI button stayed frozen (stale/empty queue, detached listeners) until a song was re-tapped.
+     */
+    fun syncFromPlayer() {
+        bindPlaybackListener()
+        viewModelScope.launch { rebuildQueueFromPlayer() }
+        startPositionPolling()
+    }
+
+    /**
+     * Rebuild the in-memory queue from the player's live window (by song id) when it is empty,
+     * then refresh the current song / position / duration. Order is taken straight from ExoPlayer
+     * so shuffle / sequential continue to work exactly as they were before the ViewModel died.
+     */
+    private suspend fun rebuildQueueFromPlayer() {
+        if (queue.isEmpty()) {
+            val ids = audioPlayer.getQueueIds()
+            if (ids.isNotEmpty()) {
+                queue = ids.mapNotNull { songRepository.getSongById(it) }
+            }
+        }
+        val idx  = audioPlayer.getCurrentQueueIndex()
+        val song = queue.getOrNull(idx) ?: _playbackState.value.currentSong
+        _playbackState.update {
+            it.copy(
+                currentSong     = song,
+                isPlaying       = audioPlayer.isPlaying(),
+                currentPosition = audioPlayer.getCurrentPosition(),
+                duration        = audioPlayer.getDuration()
+            )
+        }
+        publishNowPlaying()
     }
 
     /**
@@ -109,18 +148,24 @@ class PlayerViewModel(
     }
 
     private fun startPositionPolling() {
+        // Avoid stacking multiple poll loops when syncFromPlayer() runs on every resume.
+        if (positionJob?.isActive == true) return
         positionJob = viewModelScope.launch {
             while (true) {
-                val idx = audioPlayer.getCurrentQueueIndex()
-                _playbackState.update { state ->
-                    state.copy(
-                        isPlaying       = audioPlayer.isPlaying(),
-                        currentPosition = audioPlayer.getCurrentPosition(),
-                        duration        = audioPlayer.getDuration(),
-                        currentSong     = if (idx >= 0 && idx < queue.size) queue[idx] else state.currentSong
-                    )
+                // Guard so a transient player error can never silently kill the loop and freeze
+                // the UI; the next tick simply reads the latest state again.
+                runCatching {
+                    val idx = audioPlayer.getCurrentQueueIndex()
+                    _playbackState.update { state ->
+                        state.copy(
+                            isPlaying       = audioPlayer.isPlaying(),
+                            currentPosition = audioPlayer.getCurrentPosition(),
+                            duration        = audioPlayer.getDuration(),
+                            currentSong     = if (idx >= 0 && idx < queue.size) queue[idx] else state.currentSong
+                        )
+                    }
+                    publishNowPlaying()
                 }
-                publishNowPlaying()
                 delay(250L)
             }
         }
