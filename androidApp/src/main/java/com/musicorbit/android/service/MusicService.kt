@@ -62,8 +62,8 @@ class MusicService : MediaSessionService() {
         // Rich MediaStyle notification with transport controls + stop/dismiss action, on our channel.
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider.Builder(this)
-                .setNotificationChannelId(NOTIF_CHANNEL_ID)
-                .setNotificationChannelName("Playback")
+                .setChannelId(NOTIF_CHANNEL_ID)
+                .setChannelName(R.string.app_name)
                 .build()
                 .apply { setSmallIcon(R.drawable.ic_stat_music) }
         )
