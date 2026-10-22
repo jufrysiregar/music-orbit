@@ -122,7 +122,6 @@ actual class AudioPlayer(private val context: Context) {
         .setUri(Uri.parse(filePath))
         .setMediaMetadata(
             MediaMetadata.Builder()
-                .setMediaId(songId.toString())
                 .setTitle(title)
                 .setArtist(artist)
                 .setAlbumTitle(album)
