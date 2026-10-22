@@ -259,25 +259,33 @@ fun MainPlayerScreen(
                         PlayMode.SHUFFLE    -> Icons.Default.Shuffle to strings.modeShuffle
                         PlayMode.SEQUENTIAL -> Icons.Default.Repeat to strings.modeSequential
                     }
+                    // The circle surface is STATIC (never scaled) and floats above the animated
+                    // backdrop via a small shadow + a solid hairline border, so its edge stays defined
+                    // even when a bright aurora glow drifts past. The press bounce now lives on the
+                    // inner glyph layer only — the bouncy spring used to shrink the whole filled circle
+                    // on tap, which is what made the "bulatan" look like it flickered away.
                     Box(
                         modifier = Modifier
                             .size(56.dp)
+                            .shadow(3.dp, CircleShape)
                             .clip(CircleShape)
-                            // Opaque fill + hairline border: previously a 0.7-alpha surface sat on
-                            // top of the ANIMATED aurora backdrop, so when a bright glow drifted
-                            // behind it the dark circle washed out and looked gone (then reappeared
-                            // after navigating back, when the backdrop reset). Solid = always stable.
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape)
-                            .pressableSpring(onClick = viewModel::cyclePlayMode),
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            modeIcon,
-                            contentDescription = "${strings.modePrefix}: $modeText",
-                            tint               = MaterialTheme.colorScheme.onSurface,
-                            modifier           = Modifier.size(26.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .pressableSpring(onClick = viewModel::cyclePlayMode),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                modeIcon,
+                                contentDescription = "${strings.modePrefix}: $modeText",
+                                tint               = MaterialTheme.colorScheme.onSurface,
+                                modifier           = Modifier.size(26.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -304,23 +312,30 @@ private fun ControlIcon(
     size: androidx.compose.ui.unit.Dp = 26.dp,
     onClick: () -> Unit
 ) {
+    // Static circle + shadow/solid border so it never blends into the animated backdrop, with the
+    // press bounce on the inner glyph only (same consistency fix as the play-mode button).
     Box(
         modifier = Modifier
             .size(56.dp)
+            .shadow(3.dp, CircleShape)
             .clip(CircleShape)
-            // Opaque + bordered so the chip stays consistently visible over the animated backdrop
-            // (same fix as the play-mode button).
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape)
-            .pressableSpring(onClick = onClick),
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            icon,
-            contentDescription = description,
-            tint               = MaterialTheme.colorScheme.onSurface,
-            modifier           = Modifier.size(size)
-        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .pressableSpring(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = description,
+                tint               = MaterialTheme.colorScheme.onSurface,
+                modifier           = Modifier.size(size)
+            )
+        }
     }
 }
 

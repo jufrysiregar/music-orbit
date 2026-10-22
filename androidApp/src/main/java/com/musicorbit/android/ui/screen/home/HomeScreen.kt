@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import com.musicorbit.android.R
 import com.musicorbit.android.i18n.LocalStrings
 import com.musicorbit.android.ui.components.AlbumArtImage
@@ -69,6 +70,18 @@ fun HomeScreen(
     val sortOrder     by viewModel.sortOrder.collectAsStateWithLifecycle()
 
     var showSortMenu by remember { mutableStateOf(false) }
+
+    // Apply a newly chosen sort only AFTER the menu has finished collapsing. Calling
+    // onSortOrderChange inside the click re-sorts the list and re-lays out every row on the SAME
+    // frames the dismiss animation is playing — that main-thread contention is what made the menu
+    // look like it "lingered, then shrank slowly". Deferring the work keeps the close snappy.
+    var pendingSort by remember { mutableStateOf<SortOrder?>(null) }
+    LaunchedEffect(pendingSort) {
+        val order = pendingSort ?: return@LaunchedEffect
+        if (!showSortMenu) delay(180)   // let the exit animation play on an idle main thread first
+        viewModel.onSortOrderChange(order)
+        pendingSort = null
+    }
 
     // Inline, expandable header search: the search field lives inside the SAME header row and
     // only appears when activated, hiding the Sort/Settings icons while open.
@@ -155,10 +168,11 @@ fun HomeScreen(
                                         DropdownMenuItem(
                                             text      = { Text(order.toLabel(strings)) },
                                             onClick   = {
-                                                // Dismiss FIRST so the menu collapses instantly; the
-                                                // (async) sort + live queue re-sync happen right after.
+                                                // Dismiss instantly; the (async) sort + list re-layout is
+                                                // applied after the collapse via the pendingSort effect, so
+                                                // the closing animation is never janked by a heavy re-render.
                                                 showSortMenu = false
-                                                viewModel.onSortOrderChange(order)
+                                                pendingSort  = order
                                             },
                                             leadingIcon = if (order == sortOrder) ({
                                                 Icon(Icons.Default.Check, contentDescription = null)

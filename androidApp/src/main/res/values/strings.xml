@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Music Orbit</string>
+    <string name="widget_description">Kontrol pemutar musik: judul lagu, play/pause, dan next/prev langsung dari layar utama.</string>
 
     <array name="com_google_android_gms_fonts_certs">
         <item>@array/com_google_android_gms_fonts_certs_dev</item>
