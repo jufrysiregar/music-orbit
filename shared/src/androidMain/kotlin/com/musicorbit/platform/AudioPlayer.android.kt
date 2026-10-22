@@ -54,7 +54,7 @@ actual class AudioPlayer(private val context: Context) {
                 customCommand: SessionCommand,
                 args: Bundle
             ): ListenableFuture<SessionResult> {
-                if (customCommand.action == NOTIFICATION_STOP_ACTION) {
+                if (customCommand.customAction == NOTIFICATION_STOP_ACTION) {
                     exoPlayer.stop()
                     exoPlayer.clearMediaItems()
                     playbackListener?.invoke(false)
@@ -101,13 +101,13 @@ actual class AudioPlayer(private val context: Context) {
     private fun buildCommandLayout(includeStop: Boolean): List<CommandButton> {
         val transport = listOf(
             CommandButton.Builder(CommandButton.ICON_PREVIOUS)
-                .setPlayerCommand(Player.COMMAND_SKIP_TO_PREV)
+                .setPlayerCommand(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
                 .build(),
             CommandButton.Builder(CommandButton.ICON_PLAY)
                 .setPlayerCommand(Player.COMMAND_PLAY_PAUSE)
                 .build(),
             CommandButton.Builder(CommandButton.ICON_NEXT)
-                .setPlayerCommand(Player.COMMAND_SKIP_TO_NEXT)
+                .setPlayerCommand(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
                 .build()
         )
         if (!includeStop) return transport
