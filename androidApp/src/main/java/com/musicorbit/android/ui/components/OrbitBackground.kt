@@ -17,7 +17,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.musicorbit.android.ui.theme.LocalOrbitDark
+import com.musicorbit.android.ui.theme.OrbitBlue
 import com.musicorbit.android.ui.theme.OrbitCyan
+import com.musicorbit.android.ui.theme.OrbitIndigo
 import com.musicorbit.android.ui.theme.OrbitMagenta
 import com.musicorbit.android.ui.theme.OrbitViolet
 import kotlin.random.Random
@@ -52,28 +54,24 @@ fun OrbitBackground(
 
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // 1) Opaque base fill.
-            drawRect(color = baseColor)
+            // 1) Base vertical gradient: keeps a solid, legible surface top-to-bottom while adding
+            //    subtle depth (no flat dead zone in the middle / bottom).
+            val bottomTint = if (isDark) Color(0xFF0A0C14) else Color(0xFFE9F1FC)
+            drawRect(brush = Brush.verticalGradient(colors = listOf(baseColor, bottomTint)))
 
             val w = size.width
             val h = size.height
 
-            // Aurora glows (three colour blobs anchored to the corners)
-            drawRadialGlow(
-                center  = Offset(w * 0.15f, h * 0.12f),
-                radius  = w * 0.75f,
-                color   = OrbitViolet.copy(alpha = if (isDark) 0.30f else 0.18f)
-            )
-            drawRadialGlow(
-                center  = Offset(w * 0.92f, h * 0.06f),
-                radius  = w * 0.6f,
-                color   = OrbitCyan.copy(alpha = if (isDark) 0.22f else 0.14f)
-            )
-            drawRadialGlow(
-                center  = Offset(w * 0.85f, h * 0.98f),
-                radius  = w * 0.7f,
-                color   = OrbitMagenta.copy(alpha = if (isDark) 0.20f else 0.12f)
-            )
+            // Aurora glows spread across the WHOLE canvas (top → mid → bottom, both sides) so colour
+            // is present everywhere, not just in a band under the header. Cool cobalt / cyan / sky /
+            // indigo / silver tones keep the look premium and neutral (never pink / feminine).
+            drawRadialGlow(Offset(w * 0.08f, h * 0.06f), w * 0.90f, OrbitViolet.copy(alpha  = if (isDark) 0.34f else 0.20f))
+            drawRadialGlow(Offset(w * 0.98f, h * 0.02f), w * 0.70f, OrbitCyan.copy(alpha   = if (isDark) 0.26f else 0.16f))
+            drawRadialGlow(Offset(w * 0.86f, h * 0.34f), w * 0.72f, OrbitBlue.copy(alpha   = if (isDark) 0.26f else 0.15f))
+            drawRadialGlow(Offset(w * 0.10f, h * 0.50f), w * 0.82f, OrbitIndigo.copy(alpha = if (isDark) 0.24f else 0.14f))
+            drawRadialGlow(Offset(w * 0.92f, h * 0.70f), w * 0.78f, OrbitMagenta.copy(alpha= if (isDark) 0.22f else 0.15f))
+            drawRadialGlow(Offset(w * 0.06f, h * 0.98f), w * 0.88f, OrbitCyan.copy(alpha   = if (isDark) 0.24f else 0.15f))
+            drawRadialGlow(Offset(w * 0.62f, h * 0.96f), w * 0.72f, OrbitViolet.copy(alpha = if (isDark) 0.22f else 0.13f))
 
             // Starfield
             if (showStars && isDark) {

@@ -2,6 +2,7 @@ package com.musicorbit.android.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -9,6 +10,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionToken
 import com.musicorbit.android.R
 import com.musicorbit.platform.AudioPlayer
 import org.koin.android.ext.android.inject
@@ -68,12 +70,18 @@ class MusicService : MediaSessionService() {
                 .apply { setSmallIcon(R.drawable.ic_stat_music) }
         )
 
-        mediaSession?.let { session ->
-            val future = MediaController.Builder(this, session.token).buildAsync()
-            future.addListener({
-                keepAliveController = runCatching { future.get() }.getOrNull()
-            }, ContextCompat.getMainExecutor(this))
-        }
+        // Bind a passive controller to OUR OWN SERVICE (via its component SessionToken), not to the
+        // raw MediaSession object. A controller built from session.token connects in-process and
+        // never reaches MediaSessionService.onGetSession(), so the service sees zero connected
+        // sessions and Media3 does not reliably keep it in the foreground — which is why playback
+        // was reclaimed a few minutes after the screen turned off. Routing through the service token
+        // makes this a real connected session: the notification manager keeps the ongoing media
+        // notification + foreground state alive across screen-off / Doze.
+        val serviceToken = SessionToken(this, ComponentName(this, MusicService::class.java))
+        val future = MediaController.Builder(this, serviceToken).buildAsync()
+        future.addListener({
+            keepAliveController = runCatching { future.get() }.getOrNull()
+        }, ContextCompat.getMainExecutor(this))
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =

@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -101,7 +102,17 @@ fun HomeScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.background)
+                        .background(
+                            // Soft vertical scrim instead of a hard opaque block: keeps the title
+                            // legible up top but lets the aurora blend through toward the bottom,
+                            // removing the "colour only under the header" seam.
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.background,
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.82f)
+                                )
+                            )
+                        )
                         .statusBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
@@ -295,20 +306,35 @@ private fun HeaderSearchField(
     }
 }
 
-/** Simple, unboxed song row — no card, no entrance animation, just a clean tappable line. */
+/** Premium frosted-glass song row: a subtle surface gradient + hairline border that lifts each
+ *  track off the aurora backdrop. No pink / feminine tones — cool slate glass only. */
 @Composable
 private fun SongRow(song: Song, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.70f),
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                    )
+                )
+            )
+            .border(
+                width   = 1.dp,
+                color   = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                shape   = RoundedCornerShape(16.dp)
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AlbumArtImage(
             uri      = song.albumArtUri,
-            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp))
+            modifier = Modifier.size(50.dp).clip(RoundedCornerShape(12.dp))
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -333,14 +359,12 @@ private fun SongRow(song: Song, onClick: () -> Unit) {
             }
         }
     }
-    HorizontalDivider(
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)
-    )
 }
 
 private fun SortOrder.toLabel(strings: com.musicorbit.android.i18n.AppStrings): String = when (this) {
     SortOrder.DATE_ADDED  -> strings.sortNewest
     SortOrder.PLAY_COUNT  -> strings.sortMostPlayed
     SortOrder.TITLE       -> strings.sortTitleAz
+    SortOrder.FAVORITES   -> strings.sortFavorites
     SortOrder.ARTIST      -> strings.sortArtist
 }

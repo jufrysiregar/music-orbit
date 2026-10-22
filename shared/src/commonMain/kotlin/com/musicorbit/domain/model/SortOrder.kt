@@ -4,5 +4,6 @@ enum class SortOrder {
     DATE_ADDED,
     PLAY_COUNT,
     TITLE,
+    FAVORITES,
     ARTIST
 }

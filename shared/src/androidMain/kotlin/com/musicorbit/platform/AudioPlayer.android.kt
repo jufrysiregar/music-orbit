@@ -8,6 +8,7 @@ import android.os.PowerManager
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -67,21 +68,29 @@ actual class AudioPlayer(private val context: Context) {
     init {
         exoPlayer.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) {
-                    // 10h safety timeout so a leaked lock can never keep the CPU awake forever.
-                    if (!wakeLock.isHeld) wakeLock.acquire(10L * 60L * 60L * 1000L)
-                } else if (wakeLock.isHeld) {
-                    wakeLock.release()
+                // Defensive re-acquire: covers the very first play() where playWhenReady was already
+                // true before this callback fires. Never release here — isPlaying flips false during
+                // track transitions / buffering, and releasing then would let the CPU suspend mid-stream.
+                if (isPlaying && exoPlayer.playWhenReady && !wakeLock.isHeld) {
+                    wakeLock.acquire(10L * 60L * 60L * 1000L)
                 }
                 // Report the user's play intent (playWhenReady) rather than the raw isPlaying flag:
                 // this keeps the play/pause button from flickering to the "paused" look during brief
-                // buffering. Wake-lock handling above still keys off the real isPlaying value.
+                // buffering.
                 playbackListener?.invoke(exoPlayer.playWhenReady)
             }
 
             // playWhenReady flips instantly on user play/pause even while the player is still
             // preparing, so the UI updates with zero delay and never shows a stale style.
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                // Key the wake lock off play INTENT, not transient isPlaying: keep the CPU awake for
+                // the whole time the user wants audio (survives screen-off + track gaps), and release
+                // only on a real pause/stop. 10h safety timeout so a leaked lock never pins the CPU.
+                if (playWhenReady) {
+                    if (!wakeLock.isHeld) wakeLock.acquire(10L * 60L * 60L * 1000L)
+                } else if (wakeLock.isHeld) {
+                    wakeLock.release()
+                }
                 playbackListener?.invoke(playWhenReady)
             }
 
@@ -103,21 +112,36 @@ actual class AudioPlayer(private val context: Context) {
     /** Exposed so EqualizerEngine can bind to the correct audio session. */
     val audioSessionId: Int get() = exoPlayer.audioSessionId
 
-    actual fun setQueue(items: List<Pair<String, Long>>, startIndex: Int) {
-        val mediaItems = items.map { (filePath, songId) ->
-            MediaItem.Builder()
+    /**
+     * Build a MediaItem that also carries [MediaMetadata] (title / artist / album / artwork URI).
+     * This is what the system media notification and lock screen read — without it the card shows
+     * no album photo and blank text, which is exactly the reported notification problem.
+     */
+    private fun QueueItem.toMediaItem(): MediaItem = MediaItem.Builder()
+        .setMediaId(songId.toString())
+        .setUri(Uri.parse(filePath))
+        .setMediaMetadata(
+            MediaMetadata.Builder()
                 .setMediaId(songId.toString())
-                .setUri(Uri.parse(filePath))
+                .setTitle(title)
+                .setArtist(artist)
+                .setAlbumTitle(album)
+                .setArtworkUri(artworkUri?.let { Uri.parse(it) })
+                .setContentType(C.CONTENT_TYPE_MUSIC)
                 .build()
-        }
+        )
+        .build()
+
+    actual fun setQueue(items: List<QueueItem>, startIndex: Int) {
+        val mediaItems = items.map { it.toMediaItem() }
         exoPlayer.setMediaItems(mediaItems, startIndex.coerceIn(0, mediaItems.size - 1), 0L)
         exoPlayer.prepare()
         exoPlayer.play()
     }
 
-    actual fun reorderQueue(items: List<Pair<String, Long>>, newIndex: Int) {
+    actual fun reorderQueue(items: List<QueueItem>, newIndex: Int) {
         if (items.isEmpty()) return
-        val targetIds  = items.map { it.second }
+        val targetIds  = items.map { it.songId }
         val currentIds = (0 until exoPlayer.mediaItemCount)
             .map { exoPlayer.getMediaItemAt(it).mediaId?.toLongOrNull() }
 
@@ -143,21 +167,12 @@ actual class AudioPlayer(private val context: Context) {
 
         // Different set (rare) — replace the window WITHOUT prepare()/play() so playWhenReady is
         // preserved and the swap stays as smooth as possible.
-        val mediaItems = items.map { (filePath, songId) ->
-            MediaItem.Builder()
-                .setMediaId(songId.toString())
-                .setUri(Uri.parse(filePath))
-                .build()
-        }
+        val mediaItems = items.map { it.toMediaItem() }
         exoPlayer.setMediaItems(mediaItems, newIndex.coerceIn(0, mediaItems.size - 1), exoPlayer.currentPosition)
     }
 
-    actual fun playSong(filePath: String, songId: Long) {
-        val mediaItem = MediaItem.Builder()
-            .setMediaId(songId.toString())
-            .setUri(Uri.parse(filePath))
-            .build()
-        exoPlayer.setMediaItem(mediaItem)
+    actual fun playSong(item: QueueItem) {
+        exoPlayer.setMediaItem(item.toMediaItem())
         exoPlayer.prepare()
         exoPlayer.play()
     }
@@ -180,6 +195,24 @@ actual class AudioPlayer(private val context: Context) {
         (0 until exoPlayer.mediaItemCount).mapNotNull { i ->
             exoPlayer.getMediaItemAt(i).mediaId?.toLongOrNull()
         }
+
+    /** True when the player window already holds media. Detects the reclaimed/empty-player case
+     *  where the UI still shows a track from persistence but there is nothing prepared to play. */
+    fun hasMediaLoaded(): Boolean = exoPlayer.mediaItemCount > 0
+
+    /**
+     * Load a queue and prepare it, optionally starting playback. Used to re-arm playback after the
+     * process was reclaimed (fresh, empty ExoPlayer window): the UI knows the last track from disk
+     * but the player holds nothing, so transport buttons would only animate silently. Passing
+     * autoplay=false leaves it prepared but paused (no unexpected audio blast when the app reopens).
+     */
+    fun prepareQueue(items: List<QueueItem>, startIndex: Int, autoplay: Boolean) {
+        if (items.isEmpty()) return
+        val mediaItems = items.map { it.toMediaItem() }
+        exoPlayer.setMediaItems(mediaItems, startIndex.coerceIn(0, mediaItems.size - 1), 0L)
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = autoplay
+    }
 
     actual fun getCurrentQueueIndex(): Int = exoPlayer.currentMediaItemIndex
 

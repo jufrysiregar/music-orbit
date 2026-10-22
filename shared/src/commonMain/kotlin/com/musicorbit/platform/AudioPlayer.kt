@@ -8,13 +8,13 @@ import com.musicorbit.domain.model.PlayMode
  * iOS actual:     AVFoundation (stub)
  */
 expect class AudioPlayer {
-    fun setQueue(items: List<Pair<String, Long>>, startIndex: Int)
+    fun setQueue(items: List<QueueItem>, startIndex: Int)
     /**
      * Re-order the current queue in place (same window, new order/index) without re-preparing the
      * player, so ongoing audio playback stays perfectly smooth when the sort order changes.
      */
-    fun reorderQueue(items: List<Pair<String, Long>>, newIndex: Int)
-    fun playSong(filePath: String, songId: Long)
+    fun reorderQueue(items: List<QueueItem>, newIndex: Int)
+    fun playSong(item: QueueItem)
     fun pause()
     fun resume()
     fun stop()

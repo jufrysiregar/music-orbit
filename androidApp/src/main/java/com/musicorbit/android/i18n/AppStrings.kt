@@ -24,6 +24,7 @@ class AppStrings(
     val sortMostPlayed: String,
     val sortTitleAz: String,
     val sortArtist: String,
+    val sortFavorites: String,
     // Player
     val sleepLabel: String,
     val noSong: String,
@@ -103,6 +104,7 @@ internal val IndonesianStrings = AppStrings(
     sortMostPlayed = "Paling sering diputar",
     sortTitleAz = "A - Z",
     sortArtist = "Artis",
+    sortFavorites = "Favorit",
     sleepLabel = "Tidur",
     noSong = "Tidak ada lagu",
     previous = "Sebelumnya",
@@ -173,6 +175,7 @@ internal val EnglishStrings = AppStrings(
     sortMostPlayed = "Most played",
     sortTitleAz = "A - Z",
     sortArtist = "Artist",
+    sortFavorites = "Favorites",
     sleepLabel = "Sleep",
     noSong = "No song",
     previous = "Previous",

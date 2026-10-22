@@ -8,6 +8,7 @@ import com.musicorbit.domain.model.Song
 import com.musicorbit.domain.repository.PreferencesRepository
 import com.musicorbit.domain.repository.SongRepository
 import com.musicorbit.platform.AudioPlayer
+import com.musicorbit.platform.toQueueItem
 import com.musicorbit.platform.EqualizerEngine
 import com.musicorbit.android.widget.NowPlayingStore
 import com.musicorbit.android.ui.util.EqualizerCodec
@@ -115,6 +116,13 @@ class PlayerViewModel(
             val ids = audioPlayer.getQueueIds()
             if (ids.isNotEmpty()) {
                 queue = ids.mapNotNull { songRepository.getSongById(it) }
+            } else if (preferencesRepository.getLastPlayedSongId() != null) {
+                // Fresh / reclaimed process: the shared ExoPlayer window is empty (audio died when
+                // the app was killed) but we still know the last track from disk. Load a real, paused
+                // queue so play / next / prev drive actual audio instead of silently animating, and
+                // so the play button shows the true (paused) state rather than a fake "playing" look.
+                restoreQueueIntoPlayer(autoplay = false)
+                return
             }
         }
         val idx  = audioPlayer.getCurrentQueueIndex()
@@ -128,6 +136,34 @@ class PlayerViewModel(
             )
         }
         publishNowPlaying()
+    }
+
+    /**
+     * Re-arm a real, playable queue from persistence when the shared player window is empty — the
+     * situation after the process was reclaimed (app closed). The library is loaded in title order
+     * with the last-played track positioned as current. Returns true when a queue was (re)loaded.
+     */
+    private suspend fun restoreQueueIntoPlayer(autoplay: Boolean): Boolean {
+        val lastId = preferencesRepository.getLastPlayedSongId() ?: return false
+        val all = songRepository.getAllSongs().first()
+        if (all.isEmpty()) return false
+        val startIndex = all.indexOfFirst { it.id == lastId }
+        if (startIndex < 0) return false
+
+        queue = all
+        audioPlayer.prepareQueue(all.map { it.toQueueItem() }, startIndex, autoplay)
+        _playbackState.update {
+            it.copy(
+                currentSong     = all[startIndex],
+                isPlaying       = autoplay,
+                currentPosition = 0L,
+                duration        = audioPlayer.getDuration()
+            )
+        }
+        publishNowPlaying()
+        // Only count a play when we actually start audio, not for a silent paused restore.
+        if (autoplay) recordPlayback(all[startIndex])
+        return true
     }
 
     /**
@@ -209,7 +245,7 @@ class PlayerViewModel(
      */
     fun playFromQueue(songs: List<Song>, startIndex: Int) {
         queue = songs
-        val items = songs.map { it.filePath to it.id }
+        val items = songs.map { it.toQueueItem() }
         audioPlayer.setQueue(items, startIndex)
         // Re-apply the active play mode so shuffle / repeat survive a fresh queue.
         audioPlayer.setPlayMode(_playbackState.value.playMode)
@@ -227,7 +263,7 @@ class PlayerViewModel(
         val newIndex  = songs.indexOfFirst { it.id == currentId }
         if (newIndex < 0) return
 
-        val items = songs.map { it.filePath to it.id }
+        val items = songs.map { it.toQueueItem() }
         // Reorder the live window in place (no prepare()/play()) so the playing audio never reloads
         // or stutters when the header sort order changes.
         audioPlayer.reorderQueue(items, newIndex)
@@ -237,13 +273,20 @@ class PlayerViewModel(
     }
 
     fun playSong(song: Song) {
-        audioPlayer.playSong(song.filePath, song.id)
+        audioPlayer.playSong(song.toQueueItem())
         queue = listOf(song)
         _playbackState.update { it.copy(currentSong = song, isPlaying = true) }
         recordPlayback(song)
     }
 
     fun togglePlayPause() {
+        // Player window empty after the app was reclaimed → a bare resume() would only animate the
+        // button with no sound. Re-arm the persisted queue and start it in that case.
+        if (!audioPlayer.hasMediaLoaded()) {
+            _playbackState.update { it.copy(isPlaying = true) }
+            viewModelScope.launch { restoreQueueIntoPlayer(autoplay = true) }
+            return
+        }
         // Decide from playWhenReady (isPlayIntent) so the button reacts instantly and never
         // desyncs while the player is briefly buffering.
         if (audioPlayer.isPlayIntent()) audioPlayer.pause() else audioPlayer.resume()

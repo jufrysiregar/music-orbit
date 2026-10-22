@@ -44,11 +44,14 @@ import androidx.glance.unit.ColorProvider
 import com.musicorbit.android.MainActivity
 import com.musicorbit.android.R
 import com.musicorbit.android.service.MusicService
+import com.musicorbit.domain.repository.PreferencesRepository
 import com.musicorbit.domain.repository.SongRepository
 import com.musicorbit.platform.AudioPlayer
+import com.musicorbit.platform.toQueueItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
@@ -221,6 +224,16 @@ class WidgetActionReceiver : BroadcastReceiver() {
             context.startService(Intent(context, MusicService::class.java))
             val audioPlayer = GlobalContext.get().get<AudioPlayer>()
             val store       = GlobalContext.get().get<NowPlayingStore>()
+
+            // Cold start: the widget was tapped after the process was reclaimed, so the shared
+            // ExoPlayer window is EMPTY — resume()/skip would only animate with no audio. Re-arm a
+            // real queue from the last-played track and start it, so music plays straight from the
+            // widget without having to open the app first.
+            if (!audioPlayer.hasMediaLoaded()) {
+                scope.launch { restoreQueueAndPlay(audioPlayer, store) }
+                return
+            }
+
             when (action) {
                 "prev"   -> audioPlayer.skipPrevious()
                 "next"   -> audioPlayer.skipNext()
@@ -247,6 +260,30 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 }
             }
         }
+    }
+
+    /**
+     * Populate the (currently empty) player with the library, positioned at the last-played track,
+     * and begin playback. Mirrors the ViewModel's re-arm path so the widget is functional even when
+     * the app UI was never opened this session.
+     */
+    private suspend fun restoreQueueAndPlay(audioPlayer: AudioPlayer, store: NowPlayingStore) {
+        val repo  = GlobalContext.get().get<SongRepository>()
+        val prefs = GlobalContext.get().get<PreferencesRepository>()
+        val all = repo.getAllSongs().first()
+        if (all.isEmpty()) return
+        val lastId = prefs.getLastPlayedSongId()
+        val index  = all.indexOfFirst { it.id == lastId }.coerceAtLeast(0)
+        audioPlayer.prepareQueue(all.map { it.toQueueItem() }, index, autoplay = true)
+        val song = all[index]
+        store.update(
+            title       = song.title,
+            artist      = song.artist,
+            isPlaying   = true,
+            hasSong     = true,
+            albumArtUri = song.albumArtUri,
+            trackId     = song.id
+        )
     }
 
     companion object {
