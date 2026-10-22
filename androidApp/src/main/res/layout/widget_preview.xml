@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Static preview shown in the launcher's widget picker (android:previewLayout, Android 12+).
+  Mirrors the real Glance widget (MusicWidget.provideGlance): dark rounded card, album art,
+  title/artist, app badge, and centered prev / play / next buttons. Uses only RemoteViews-safe
+  views (LinearLayout / FrameLayout / ImageView / TextView) so the launcher can inflate it.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_preview_bg"
+    android:padding="12dp">
+
+    <!-- Header: album art | title + artist | app badge -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/widget_art_bg"
+            android:padding="15dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_stat_music"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="@string/widget_preview_title"
+                android:textColor="#FFFFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="@string/widget_preview_artist"
+                android:textColor="#FFB8B5C9"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <ImageView
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginStart="6dp"
+            android:src="@drawable/app_logo"
+            android:contentDescription="@null" />
+    </LinearLayout>
+
+    <!-- Transport controls, centered along the bottom -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <ImageView
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/widget_button_bg"
+            android:padding="10dp"
+            android:src="@drawable/ic_widget_prev"
+            android:contentDescription="@null" />
+
+        <ImageView
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/widget_button_bg"
+            android:padding="12dp"
+            android:src="@drawable/ic_widget_play"
+            android:contentDescription="@null" />
+
+        <ImageView
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/widget_button_bg"
+            android:padding="10dp"
+            android:src="@drawable/ic_widget_next"
+            android:contentDescription="@null" />
+    </LinearLayout>
+</LinearLayout>
