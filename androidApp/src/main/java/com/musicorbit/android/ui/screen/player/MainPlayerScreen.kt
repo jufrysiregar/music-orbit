@@ -14,6 +14,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -202,24 +203,31 @@ fun MainPlayerScreen(
                 ) {
                     ControlIcon(Icons.Default.SkipPrevious, strings.previous, size = 32.dp) { viewModel.skipPrevious() }
 
-                    // Play and Pause share the EXACT same circular container (aurora gradient +
-                    // glow) in BOTH states — only the glyph swaps. Fixed 80dp box + instant swap
-                    // => no layout shift / flicker, and identical in Light & Dark (theme gradient).
+                    // Play / Pause: the aurora circle is a STATIC surface (never scaled, never
+                    // removed) so rapid tapping can no longer make it flicker or "lose its round
+                    // shape". The press bounce is applied to the inner glyph layer only, and the
+                    // glyph swap stays instant — so both states look identical apart from the icon.
                     Box(
                         modifier = Modifier
                             .size(80.dp)
                             .shadow(20.dp, CircleShape, ambientColor = OrbitViolet, spotColor = OrbitViolet, clip = false)
                             .clip(CircleShape)
-                            .background(auroraGradient(), CircleShape)
-                            .pressableSpring(pressedScale = 0.92f, onClick = viewModel::togglePlayPause),
+                            .background(auroraGradient(), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (state.isPlaying) strings.pause else strings.play,
-                            tint               = Color.White,
-                            modifier           = Modifier.size(42.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .pressableSpring(pressedScale = 0.9f, onClick = viewModel::togglePlayPause),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (state.isPlaying) strings.pause else strings.play,
+                                tint               = Color.White,
+                                modifier           = Modifier.size(42.dp)
+                            )
+                        }
                     }
 
                     ControlIcon(Icons.Default.SkipNext, strings.next, size = 32.dp) { viewModel.skipNext() }
@@ -255,7 +263,12 @@ fun MainPlayerScreen(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                            // Opaque fill + hairline border: previously a 0.7-alpha surface sat on
+                            // top of the ANIMATED aurora backdrop, so when a bright glow drifted
+                            // behind it the dark circle washed out and looked gone (then reappeared
+                            // after navigating back, when the backdrop reset). Solid = always stable.
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape)
                             .pressableSpring(onClick = viewModel::cyclePlayMode),
                         contentAlignment = Alignment.Center
                     ) {
@@ -295,7 +308,10 @@ private fun ControlIcon(
         modifier = Modifier
             .size(56.dp)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+            // Opaque + bordered so the chip stays consistently visible over the animated backdrop
+            // (same fix as the play-mode button).
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape)
             .pressableSpring(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

@@ -93,20 +93,20 @@ fun MiniPlayer(
 
         Spacer(Modifier.width(2.dp))
 
-        // Play and Pause share the SAME circular container (primary fill) in both states; only the
-        // glyph swaps. Fixed 46dp box + instant swap => no shift / flicker, consistent Light & Dark.
+        // Play / Pause: one borderless control that looks IDENTICAL in both states — same size,
+        // same tint, no filled circle, no colour change. Only the glyph swaps, instantly.
         Box(
             modifier = Modifier
                 .size(46.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary)
-                .pressableSpring(pressedScale = 0.9f, onClick = onTogglePlayPause),
+                .pressableSpring(onClick = onTogglePlayPause),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector        = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = if (isPlaying) strings.pause else strings.play,
-                tint               = MaterialTheme.colorScheme.onPrimary
+                tint               = MaterialTheme.colorScheme.primary,
+                modifier           = Modifier.size(30.dp)
             )
         }
 

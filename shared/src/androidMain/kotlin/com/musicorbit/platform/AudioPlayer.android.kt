@@ -4,15 +4,26 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.os.PowerManager
+import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.musicorbit.domain.model.PlayMode
+
+/** Action string for the notification's Stop ("X") custom command (see buildCommandLayout). */
+private const val NOTIFICATION_STOP_ACTION = "com.musicorbit.platform.action.STOP"
 
 actual class AudioPlayer(private val context: Context) {
 
@@ -32,7 +43,29 @@ actual class AudioPlayer(private val context: Context) {
     }
 
     private val mediaSession: MediaSession = run {
-        val builder = MediaSession.Builder(context, exoPlayer).setId("MusicOrbitSession")
+        // Handle the notification's Stop ("X") action. Per Media3, the ongoing media notification
+        // can only be dismissed once the playlist is cleared, so stopping means clearing it (which
+        // also removes the card and lets the service be reclaimed). X is only shown while paused.
+        val stopCallback = object : MediaSession.Callback {
+            @OptIn(UnstableApi::class)
+            override fun onCustomCommand(
+                session: MediaSession,
+                controller: MediaSession.ControllerInfo,
+                customCommand: SessionCommand,
+                args: Bundle
+            ): ListenableFuture<SessionResult> {
+                if (customCommand.action == NOTIFICATION_STOP_ACTION) {
+                    exoPlayer.stop()
+                    exoPlayer.clearMediaItems()
+                    playbackListener?.invoke(false)
+                }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+        }
+
+        val builder = MediaSession.Builder(context, exoPlayer)
+            .setId("MusicOrbitSession")
+            .setCallback(stopCallback)
         // The notification's content intent (tap anywhere on the media card) opens the running app
         // straight into the player. We resolve the launcher intent by package so the shared module
         // doesn't need to reference MainActivity.
@@ -51,7 +84,38 @@ actual class AudioPlayer(private val context: Context) {
             )
             builder.setSessionActivity(pi)
         }
-        builder.build()
+        val session = builder.build()
+        // Initially not playing -> include the Stop ("X") button. Kept in sync on every
+        // play/pause transition in the Player.Listener below.
+        session.setCustomLayout(buildCommandLayout(includeStop = !exoPlayer.playWhenReady))
+        session
+    }
+
+    /**
+     * Custom notification layout: the usual previous / play-pause / next transport buttons, plus a
+     * Stop ("X") action ONLY while [includeStop] is true (i.e. when paused). Media3 renders these
+     * CommandButtons directly in the notification, and the play/pause button auto-toggles its glyph
+     * because it is bound to [Player.COMMAND_PLAY_PAUSE].
+     */
+    @OptIn(UnstableApi::class)
+    private fun buildCommandLayout(includeStop: Boolean): List<CommandButton> {
+        val transport = listOf(
+            CommandButton.Builder(CommandButton.ICON_PREVIOUS)
+                .setPlayerCommand(Player.COMMAND_SKIP_TO_PREV)
+                .build(),
+            CommandButton.Builder(CommandButton.ICON_PLAY)
+                .setPlayerCommand(Player.COMMAND_PLAY_PAUSE)
+                .build(),
+            CommandButton.Builder(CommandButton.ICON_NEXT)
+                .setPlayerCommand(Player.COMMAND_SKIP_TO_NEXT)
+                .build()
+        )
+        if (!includeStop) return transport
+        val stop = CommandButton.Builder(CommandButton.ICON_STOP)
+            .setDisplayName("Stop")
+            .setSessionCommand(SessionCommand(NOTIFICATION_STOP_ACTION, Bundle.EMPTY))
+            .build()
+        return transport + stop
     }
 
     // PARTIAL_WAKE_LOCK keeps the CPU awake while audio is playing, so playback doesn't stall
@@ -82,6 +146,7 @@ actual class AudioPlayer(private val context: Context) {
 
             // playWhenReady flips instantly on user play/pause even while the player is still
             // preparing, so the UI updates with zero delay and never shows a stale style.
+            @OptIn(UnstableApi::class)
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 // Key the wake lock off play INTENT, not transient isPlaying: keep the CPU awake for
                 // the whole time the user wants audio (survives screen-off + track gaps), and release
@@ -91,6 +156,9 @@ actual class AudioPlayer(private val context: Context) {
                 } else if (wakeLock.isHeld) {
                     wakeLock.release()
                 }
+                // While playing hide the Stop ("X") button; while paused show it so the user can
+                // dismiss the notification.
+                mediaSession.setCustomLayout(buildCommandLayout(includeStop = !playWhenReady))
                 playbackListener?.invoke(playWhenReady)
             }
 
@@ -143,6 +211,9 @@ actual class AudioPlayer(private val context: Context) {
         val currentIds = (0 until exoPlayer.mediaItemCount)
             .map { exoPlayer.getMediaItemAt(it).mediaId?.toLongOrNull() }
 
+        // Already exactly in the requested order -> nothing to do (zero window churn).
+        if (currentIds == targetIds) return
+
         // Same set of tracks, only the ORDER changed (the normal sort case): reorder the live window
         // with moveMediaItem so the currently playing media source is NEVER re-created. setMediaItems
         // would rebuild the window and re-buffer the active item — the audible "kesedak" on sort.
@@ -163,10 +234,17 @@ actual class AudioPlayer(private val context: Context) {
             return
         }
 
-        // Different set (rare) — replace the window WITHOUT prepare()/play() so playWhenReady is
-        // preserved and the swap stays as smooth as possible.
+        // Different set (e.g. switched to/from "Favorit", or a search is active). Rebuilding the
+        // window with setMediaItems mid-playback re-creates the active source and causes a hitch,
+        // so while audio is playing we leave the live window untouched. The membership is picked up
+        // on the next explicit play, or here once playback is paused/stopped (nothing to stutter).
+        if (exoPlayer.isPlaying || exoPlayer.playWhenReady) return
         val mediaItems = items.map { it.toMediaItem() }
-        exoPlayer.setMediaItems(mediaItems, newIndex.coerceIn(0, mediaItems.size - 1), exoPlayer.currentPosition)
+        exoPlayer.setMediaItems(
+            mediaItems,
+            newIndex.coerceIn(0, mediaItems.size - 1),
+            exoPlayer.currentPosition
+        )
     }
 
     actual fun playSong(item: QueueItem) {

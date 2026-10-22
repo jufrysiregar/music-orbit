@@ -155,8 +155,10 @@ fun HomeScreen(
                                         DropdownMenuItem(
                                             text      = { Text(order.toLabel(strings)) },
                                             onClick   = {
-                                                viewModel.onSortOrderChange(order)
+                                                // Dismiss FIRST so the menu collapses instantly; the
+                                                // (async) sort + live queue re-sync happen right after.
                                                 showSortMenu = false
+                                                viewModel.onSortOrderChange(order)
                                             },
                                             leadingIcon = if (order == sortOrder) ({
                                                 Icon(Icons.Default.Check, contentDescription = null)
