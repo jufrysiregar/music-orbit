@@ -12,6 +12,7 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.ContentScale
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
@@ -76,9 +77,6 @@ class MusicWidget : GlanceAppWidget() {
         val playIcon = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
         val albumArt = loadAlbumArt(context, snapshot.albumArtUri)
         val artProvider = albumArt?.let { ImageProvider(it) } ?: ImageProvider(R.drawable.app_logo)
-        // Real launcher icon for the top-right badge (matches the app's drawer icon exactly).
-        val launcherProvider = loadLauncherIcon(context)?.let { ImageProvider(it) } ?: ImageProvider(R.drawable.app_logo)
-
         provideContent {
             val ctx = LocalContext.current
             // Deep link that opens MainActivity straight into the Main Player screen.
@@ -88,88 +86,63 @@ class MusicWidget : GlanceAppWidget() {
                     .putExtra(MainActivity.EXTRA_OPEN_PLAYER, true)
                     .putExtra(MainActivity.EXTRA_TRACK_ID, snapshot.trackId ?: -1L)
             )
-            Column(
-                modifier = GlanceModifier
+            // Compact SINGLE-ROW mini-player (matches the reference thumbnail): art | title/artist |
+            // prev · play · next. One row is what keeps it minimal — the previous two-row (header +
+            // transport) layout made it as tall as the notification card. The weighted title Column
+            // pushes the transport controls to the right edge.
+            Row(
+                modifier          = GlanceModifier
                     .fillMaxSize()
                     .background(ColorProvider(AndroidColor.parseColor("#12101F")))
                     .cornerRadius(20.dp)
-                    .padding(12.dp)
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // ── Header: album art | title/artist | app launcher ──────────────
-                Row(
-                    modifier              = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment     = Alignment.CenterVertically
+                // Album art → open the Main Player screen for the current track.
+                Box(
+                    modifier         = GlanceModifier
+                        .size(52.dp)
+                        .cornerRadius(12.dp)
+                        .clickable(openPlayerAction),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Album art → open the Main Player screen for the current track.
-                    Box(
-                        modifier         = GlanceModifier
-                            .size(56.dp)
-                            .cornerRadius(12.dp)
-                            .clickable(openPlayerAction),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            provider           = artProvider,
-                            contentDescription = if (snapshot.hasSong) snapshot.title else "Music Orbit"
-                        )
-                    }
-
-                    Spacer(GlanceModifier.width(12.dp))
-
-                    Column(modifier = GlanceModifier.defaultWeight()) {
-                        Text(
-                            text     = if (snapshot.hasSong) snapshot.title else "Music Orbit",
-                            maxLines = 1,
-                            style    = TextStyle(
-                                color      = ColorProvider(AndroidColor.WHITE),
-                                fontWeight = FontWeight.Bold,
-                                fontSize   = 16.sp
-                            )
-                        )
-                        Text(
-                            text     = if (snapshot.hasSong) snapshot.artist else "Tap play to start",
-                            maxLines = 1,
-                            style    = TextStyle(
-                                color    = ColorProvider(AndroidColor.parseColor("#B8B5C9")),
-                                fontSize = 13.sp
-                            )
-                        )
-                    }
-
-                    Spacer(GlanceModifier.width(6.dp))
-
-                    // App launcher icon (circular) → opens the Main Player via deep link.
-                    Box(
-                        modifier = GlanceModifier
-                            .size(34.dp)
-                            .cornerRadius(17.dp)
-                            .clickable(openPlayerAction),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            provider           = launcherProvider,
-                            contentDescription = "Open Music Orbit"
-                        )
-                    }
+                    Image(
+                        provider           = artProvider,
+                        contentDescription = if (snapshot.hasSong) snapshot.title else "Music Orbit",
+                        modifier           = GlanceModifier.size(52.dp),
+                        contentScale       = ContentScale.Crop
+                    )
                 }
 
-                // Push the transport controls to the bottom of the widget.
-                Spacer(GlanceModifier.height(10.dp))
+                Spacer(GlanceModifier.width(12.dp))
 
-                // ── Transport controls, centered along the bottom ────────────────
-                // Glance's Row has no horizontalArrangement; center the cluster with weighted spacers.
-                Row(
-                    modifier              = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Spacer(GlanceModifier.defaultWeight())
-                    WidgetButton(ctx, R.drawable.ic_widget_prev, "Previous", "prev", 44.dp)
-                    Spacer(GlanceModifier.width(10.dp))
-                    WidgetButton(ctx, playIcon, "Play/Pause", "toggle", 54.dp)
-                    Spacer(GlanceModifier.width(10.dp))
-                    WidgetButton(ctx, R.drawable.ic_widget_next, "Next", "next", 44.dp)
-                    Spacer(GlanceModifier.defaultWeight())
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    Text(
+                        text     = if (snapshot.hasSong) snapshot.title else "Music Orbit",
+                        maxLines = 1,
+                        style    = TextStyle(
+                            color      = ColorProvider(AndroidColor.WHITE),
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 15.sp
+                        )
+                    )
+                    Text(
+                        text     = if (snapshot.hasSong) snapshot.artist else "Tap play to start",
+                        maxLines = 1,
+                        style    = TextStyle(
+                            color    = ColorProvider(AndroidColor.parseColor("#B8B5C9")),
+                            fontSize = 12.sp
+                        )
+                    )
                 }
+
+                Spacer(GlanceModifier.width(6.dp))
+
+                WidgetButton(ctx, R.drawable.ic_widget_prev, "Previous", "prev", 40.dp)
+                Spacer(GlanceModifier.width(6.dp))
+                WidgetButton(ctx, playIcon, "Play/Pause", "toggle", 46.dp)
+                Spacer(GlanceModifier.width(6.dp))
+                WidgetButton(ctx, R.drawable.ic_widget_next, "Next", "next", 40.dp)
             }
         }
     }
@@ -303,6 +276,9 @@ private fun loadAlbumArt(context: Context, uri: String?, maxPx: Int = 256): Bitm
         context.contentResolver.openInputStream(Uri.parse(uri))?.use {
             BitmapFactory.decodeStream(it, null, bounds)
         }
+        // Couldn't read dimensions → fall back to the logo instead of decoding at FULL resolution,
+        // which can blow the RemoteViews binder size limit and trigger "cannot load widget".
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
         var sample = 1
         val largest = maxOf(bounds.outWidth, bounds.outHeight)
         while (largest / sample > maxPx) sample *= 2

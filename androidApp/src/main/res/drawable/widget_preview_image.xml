@@ -2,79 +2,75 @@
 <!--
   Static picker thumbnail rendered via android:previewImage. Some launchers (e.g. Samsung OneUI)
   ignore android:previewLayout and only show previewImage, so this layer-list reproduces the real
-  Glance widget as a drawable: dark rounded card (#12101F), album-art placeholder (#2A2440),
-  title/artist bars, app badge, and prev / play / next transport circles. Canvas is 320x180dp.
-  Uses only <shape> + existing vector drawables, so it is safe to render as a preview image.
+  Glance widget as a drawable: a compact SINGLE-ROW mini-player — dark rounded card (#12101F),
+  album-art placeholder (#2A2440), title/artist bars, and prev / play / next transport circles on
+  the right. Canvas is 320x110dp (short, so it reads as minimal, not a tall notification card).
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Card background (defines the intrinsic 320x180 size) -->
-    <item android:width="320dp" android:height="180dp">
+    <!-- Card background (defines the intrinsic 320x110 size) -->
+    <item android:width="320dp" android:height="110dp">
         <shape android:shape="rectangle">
             <solid android:color="#12101F" />
             <corners android:radius="20dp" />
         </shape>
     </item>
 
-    <!-- Album art placeholder, top-left -->
-    <item android:width="60dp" android:height="60dp" android:gravity="top|start"
-        android:left="16dp" android:top="20dp">
+    <!-- Album art placeholder, left -->
+    <item android:width="52dp" android:height="52dp" android:gravity="center_vertical|start"
+        android:left="14dp">
         <shape android:shape="rectangle">
             <solid android:color="#2A2440" />
             <corners android:radius="12dp" />
         </shape>
     </item>
-    <item android:width="26dp" android:height="26dp" android:gravity="top|start"
-        android:left="33dp" android:top="37dp" android:drawable="@drawable/ic_stat_music" />
+    <item android:width="22dp" android:height="22dp" android:gravity="center_vertical|start"
+        android:left="29dp" android:drawable="@drawable/ic_stat_music" />
 
     <!-- Title + artist bars -->
-    <item android:width="130dp" android:height="12dp" android:gravity="top|start"
-        android:left="88dp" android:top="34dp">
+    <item android:width="110dp" android:height="11dp" android:gravity="top|start"
+        android:left="80dp" android:top="40dp">
         <shape android:shape="rectangle">
             <solid android:color="#E6FFFFFF" />
             <corners android:radius="6dp" />
         </shape>
     </item>
-    <item android:width="84dp" android:height="9dp" android:gravity="top|start"
-        android:left="88dp" android:top="55dp">
+    <item android:width="70dp" android:height="8dp" android:gravity="top|start"
+        android:left="80dp" android:top="57dp">
         <shape android:shape="rectangle">
             <solid android:color="#80B8B5C9" />
-            <corners android:radius="5dp" />
+            <corners android:radius="4dp" />
         </shape>
     </item>
 
-    <!-- App badge, top-right -->
-    <item android:width="30dp" android:height="30dp" android:gravity="top|end"
-        android:right="16dp" android:top="16dp" android:drawable="@drawable/app_logo" />
-
     <!-- Transport: prev -->
-    <item android:width="40dp" android:height="40dp" android:gravity="bottom|start"
-        android:left="84dp" android:bottom="22dp">
+    <item android:width="34dp" android:height="34dp" android:gravity="center_vertical|end"
+        android:right="104dp">
         <shape android:shape="oval">
             <solid android:color="#2A2440" />
         </shape>
     </item>
-    <item android:width="18dp" android:height="18dp" android:gravity="bottom|start"
-        android:left="95dp" android:bottom="33dp" android:drawable="@drawable/ic_widget_prev" />
+    <item android:width="15dp" android:height="15dp" android:gravity="center_vertical|end"
+        android:right="128dp" android:drawable="@drawable/ic_widget_prev" />
 
     <!-- Transport: play (larger, accent) -->
-    <item android:width="48dp" android:height="48dp" android:gravity="bottom|center_horizontal"
-        android:bottom="18dp">
+    <item android:width="40dp" android:height="40dp" android:gravity="center_vertical|end"
+        android:right="56dp">
         <shape android:shape="oval">
             <solid android:color="#3A3358" />
         </shape>
     </item>
-    <item android:width="22dp" android:height="22dp" android:gravity="bottom|center_horizontal"
-        android:bottom="31dp" android:drawable="@drawable/ic_widget_play" />
+    <item android:width="18dp" android:height="18dp" android:gravity="center_vertical|end"
+        android:right="85dp" android:drawable="@drawable/ic_widget_play" />
 
     <!-- Transport: next -->
-    <item android:width="40dp" android:height="40dp" android:gravity="bottom|start"
-        android:left="196dp" android:bottom="22dp">
+    <item android:width="34dp" android:height="34dp" android:gravity="center_vertical|end"
+        android:right="14dp">
         <shape android:shape="oval">
             <solid android:color="#2A2440" />
         </shape>
     </item>
-    <item android:width="18dp" android:height="18dp" android:gravity="bottom|start"
-        android:left="207dp" android:bottom="33dp" android:drawable="@drawable/ic_widget_next" />
+    <item android:width="15dp" android:height="15dp" android:gravity="center_vertical|end"
+        android:right="38dp" android:drawable="@drawable/ic_widget_next" />
 
 </layer-list>
