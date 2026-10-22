@@ -10,9 +10,9 @@ import android.graphics.drawable.Drawable
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.ContentScale
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
