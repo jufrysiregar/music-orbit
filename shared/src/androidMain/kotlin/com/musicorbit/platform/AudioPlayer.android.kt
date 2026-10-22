@@ -126,7 +126,7 @@ actual class AudioPlayer(private val context: Context) {
                 .setArtist(artist)
                 .setAlbumTitle(album)
                 .setArtworkUri(artworkUri?.let { Uri.parse(it) })
-                .setContentType(C.CONTENT_TYPE_MUSIC)
+                .setMediaType(C.MEDIA_TYPE_AUDIO)
                 .build()
         )
         .build()
