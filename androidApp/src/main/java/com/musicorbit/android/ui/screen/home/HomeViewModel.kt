@@ -8,6 +8,7 @@ import com.musicorbit.domain.repository.PreferencesRepository
 import com.musicorbit.domain.usecase.GetSortedSongsUseCase
 import com.musicorbit.domain.usecase.ScanMusicUseCase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -89,14 +90,19 @@ class HomeViewModel(
     fun onSearchQueryChange(query: String) { _searchQuery.value = query }
 
     fun onSortOrderChange(order: SortOrder) {
+        // Apply the order synchronously so the visible list starts re-sorting immediately. The sort
+        // itself runs off the main thread (combine + flowOn) and the LazyColumn only relayouts the few
+        // visible rows, so this is cheap and feels instant.
         _sortOrder.value = order
         viewModelScope.launch {
             preferencesRepository.saveSortOrder(order)
-            // Compute the new order off the main thread, then hop back to Main only to reorder the
-            // ExoPlayer window (which must run on the player's own thread).
             val sorted = withContext(Dispatchers.Default) {
                 sortAndFilter(rawSongs, _searchQuery.value, order, favorites.value)
             }
+            // Defer ONLY the queue re-sync: reorderQueue issues many moveMediaItem calls on the main
+            // thread and would jank the dropdown's collapse if run immediately. The list has already
+            // updated above, so sorting feels instant while the dismissal stays smooth.
+            delay(220)
             onQueueShouldFollowSort?.invoke(sorted)
         }
     }
