@@ -39,10 +39,37 @@
             android:name=".MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
+
+            <!-- App launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!--
+              Registers app sebagai music player sehingga muncul di:
+                - Settings > Default Apps > Music Player
+                - Dialog "Open with..." saat buka file audio
+              Android mendeteksi music player dari ACTION_VIEW + audio/* MIME.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" android:mimeType="audio/*" />
+                <data android:scheme="content" android:mimeType="audio/*" />
+                <data android:scheme="file" android:mimeType="application/ogg" />
+                <data android:scheme="content" android:mimeType="application/ogg" />
+                <data android:scheme="file" android:mimeType="application/x-flac" />
+                <data android:scheme="content" android:mimeType="application/x-flac" />
+            </intent-filter>
+
+            <!-- Menandai app ini sebagai music player di Default Apps picker -->
+            <intent-filter>
+                <action android:name="android.intent.action.MUSIC_PLAYER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
         </activity>
 
         <!-- MusicService: MediaSessionService for background audio playback -->
