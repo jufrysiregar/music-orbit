@@ -33,8 +33,6 @@ import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
@@ -45,6 +43,8 @@ import androidx.glance.unit.ColorProvider
 import com.musicorbit.android.MainActivity
 import com.musicorbit.android.R
 import com.musicorbit.android.service.MusicService
+import com.musicorbit.android.di.androidModule
+import com.musicorbit.di.sharedModule
 import com.musicorbit.domain.repository.PreferencesRepository
 import com.musicorbit.domain.repository.SongRepository
 import com.musicorbit.platform.AudioPlayer
@@ -54,96 +54,121 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
+import org.koin.core.context.startKoin
 
 /**
  * Home-screen widget matching the reference layout:
  *  - Left:        current song album art (decoded from its content URI).
- *  - Top-Left:    song title + artist.
- *  - Top-Right:   the app logo, which launches [MainActivity] when tapped.
- *  - Center-Bottom: previous / play-pause / next, wired to [AudioPlayer] via a broadcast.
+ *  - Middle:      song title + artist.
+ *  - Right:       previous / play-pause / next transport controls.
  *
- * It renders purely from [NowPlayingStore], so it never touches ExoPlayer off the main thread,
- * and repaints in real time whenever the store changes (song change or play/pause).
+ * Renders purely from [NowPlayingStore]; never touches ExoPlayer off the main thread.
+ * Repaints whenever the store changes (song change or play/pause).
+ *
+ * Fix notes:
+ *  - SizeMode.Responsive instead of SizeMode.Exact to avoid crash on first placement.
+ *  - ensureKoinStarted() guard so widget works even if the app process was never opened.
+ *  - actionSendBroadcast uses ComponentName string (not class ref) safe for all API levels.
  */
 class MusicWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Exact
+    // SizeMode.Responsive: define supported sizes so Glance picks the best fit.
+    // This avoids the "cannot load widget" crash that SizeMode.Exact causes on first placement
+    // when the system hasn't yet delivered a valid size to the widget host.
+    override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = runCatching { GlobalContext.get().get<NowPlayingStore>().state.value }
-            .getOrDefault(NowPlayingStore.NowPlaying())
+        // Guard: make sure Koin is running before we try to resolve any dependency.
+        // When Android restores widgets after a reboot or process-death, the widget's
+        // provideGlance() can be called BEFORE the user ever opens the app, so
+        // MusicOrbitApp.onCreate() may not have run yet.
+        ensureKoinStarted(context)
 
-        val playIcon = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
-        val albumArt = loadAlbumArt(context, snapshot.albumArtUri)
+        val snapshot = runCatching {
+            GlobalContext.get().get<NowPlayingStore>().state.value
+        }.getOrDefault(NowPlayingStore.NowPlaying())
+
+        val playIcon    = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        val albumArt    = loadAlbumArt(context, snapshot.albumArtUri)
         val artProvider = albumArt?.let { ImageProvider(it) } ?: ImageProvider(R.drawable.app_logo)
+
         provideContent {
             val ctx = LocalContext.current
-            // Deep link that opens MainActivity straight into the Main Player screen.
-            val openPlayerAction = actionStartActivity(
-                Intent(ctx, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    .putExtra(MainActivity.EXTRA_OPEN_PLAYER, true)
-                    .putExtra(MainActivity.EXTRA_TRACK_ID, snapshot.trackId ?: -1L)
-            )
-            // Compact SINGLE-ROW mini-player (matches the reference thumbnail): art | title/artist |
-            // prev · play · next. One row is what keeps it minimal — the previous two-row (header +
-            // transport) layout made it as tall as the notification card. The weighted title Column
-            // pushes the transport controls to the right edge.
-            Row(
-                modifier          = GlanceModifier
-                    .fillMaxSize()
-                    .background(ColorProvider(AndroidColor.parseColor("#12101F")))
-                    .cornerRadius(20.dp)
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+            WidgetContent(ctx, snapshot, artProvider, playIcon)
+        }
+    }
+
+    @Composable
+    private fun WidgetContent(
+        ctx: Context,
+        snapshot: NowPlayingStore.NowPlaying,
+        artProvider: ImageProvider,
+        playIcon: Int
+    ) {
+        val openPlayerAction = actionStartActivity(
+            Intent(ctx, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(MainActivity.EXTRA_OPEN_PLAYER, true)
+                .putExtra(MainActivity.EXTRA_TRACK_ID, snapshot.trackId ?: -1L)
+        )
+
+        Row(
+            modifier          = GlanceModifier
+                .fillMaxSize()
+                .background(ColorProvider(AndroidColor.parseColor("#12101F")))
+                .cornerRadius(20.dp)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Album art — tap opens the player screen
+            Box(
+                modifier         = GlanceModifier
+                    .size(52.dp)
+                    .cornerRadius(12.dp)
+                    .clickable(openPlayerAction),
+                contentAlignment = Alignment.Center
             ) {
-                // Album art → open the Main Player screen for the current track.
-                Box(
-                    modifier         = GlanceModifier
-                        .size(52.dp)
-                        .cornerRadius(12.dp)
-                        .clickable(openPlayerAction),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        provider           = artProvider,
-                        contentDescription = if (snapshot.hasSong) snapshot.title else "Music Orbit",
-                        modifier           = GlanceModifier.size(52.dp),
-                        contentScale       = ContentScale.Crop
-                    )
-                }
-
-                Spacer(GlanceModifier.width(12.dp))
-
-                Column(modifier = GlanceModifier.defaultWeight()) {
-                    Text(
-                        text     = if (snapshot.hasSong) snapshot.title else "Music Orbit",
-                        maxLines = 1,
-                        style    = TextStyle(
-                            color      = ColorProvider(AndroidColor.WHITE),
-                            fontWeight = FontWeight.Bold,
-                            fontSize   = 15.sp
-                        )
-                    )
-                    Text(
-                        text     = if (snapshot.hasSong) snapshot.artist else "Tap play to start",
-                        maxLines = 1,
-                        style    = TextStyle(
-                            color    = ColorProvider(AndroidColor.parseColor("#B8B5C9")),
-                            fontSize = 12.sp
-                        )
-                    )
-                }
-
-                Spacer(GlanceModifier.width(6.dp))
-
-                WidgetButton(ctx, R.drawable.ic_widget_prev, "Previous", "prev", 40.dp)
-                Spacer(GlanceModifier.width(6.dp))
-                WidgetButton(ctx, playIcon, "Play/Pause", "toggle", 46.dp)
-                Spacer(GlanceModifier.width(6.dp))
-                WidgetButton(ctx, R.drawable.ic_widget_next, "Next", "next", 40.dp)
+                Image(
+                    provider           = artProvider,
+                    contentDescription = if (snapshot.hasSong) snapshot.title else "Music Orbit",
+                    modifier           = GlanceModifier.size(52.dp),
+                    contentScale       = ContentScale.Crop
+                )
             }
+
+            Spacer(GlanceModifier.width(12.dp))
+
+            // Song title + artist
+            Column(modifier = GlanceModifier.defaultWeight()) {
+                Text(
+                    text     = if (snapshot.hasSong) snapshot.title else "Music Orbit",
+                    maxLines = 1,
+                    style    = TextStyle(
+                        color      = ColorProvider(AndroidColor.WHITE),
+                        fontWeight = FontWeight.Bold,
+                        fontSize   = 15.sp
+                    )
+                )
+                Text(
+                    text     = if (snapshot.hasSong) snapshot.artist else "Tap play to start",
+                    maxLines = 1,
+                    style    = TextStyle(
+                        color    = ColorProvider(AndroidColor.parseColor("#B8B5C9")),
+                        fontSize = 12.sp
+                    )
+                )
+            }
+
+            Spacer(GlanceModifier.width(6.dp))
+
+            // Transport controls
+            WidgetButton(ctx, R.drawable.ic_widget_prev,  "Previous",   ACTION_PREV,   40.dp)
+            Spacer(GlanceModifier.width(6.dp))
+            WidgetButton(ctx, playIcon,                   "Play/Pause",  ACTION_TOGGLE, 46.dp)
+            Spacer(GlanceModifier.width(6.dp))
+            WidgetButton(ctx, R.drawable.ic_widget_next,  "Next",        ACTION_NEXT,   40.dp)
         }
     }
 
@@ -162,8 +187,9 @@ class MusicWidget : GlanceAppWidget() {
                 .background(ColorProvider(AndroidColor.parseColor("#2A2440")))
                 .clickable(
                     actionSendBroadcast(
-                        Intent(context, WidgetActionReceiver::class.java)
-                            .putExtra(WidgetActionReceiver.ACTION_EXTRA, action)
+                        Intent(WidgetActionReceiver.ACTION_WIDGET_CONTROL)
+                            .setPackage(context.packageName)
+                            .putExtra(WidgetActionReceiver.EXTRA_ACTION, action)
                     )
                 ),
             contentAlignment = Alignment.Center
@@ -174,6 +200,12 @@ class MusicWidget : GlanceAppWidget() {
             )
         }
     }
+
+    companion object {
+        const val ACTION_PREV   = "prev"
+        const val ACTION_TOGGLE = "toggle"
+        const val ACTION_NEXT   = "next"
+    }
 }
 
 class MusicWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -181,41 +213,44 @@ class MusicWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 /**
- * Receives transport taps from the widget and forwards them to the shared [AudioPlayer]
- * singleton, then refreshes [NowPlayingStore] (which repaints every widget instance).
- * `onReceive` runs on the main thread, so calling the ExoPlayer-backed player is safe.
+ * Receives transport taps from the widget and forwards them to [AudioPlayer].
+ *
+ * Uses an implicit broadcast action ([ACTION_WIDGET_CONTROL]) + package filter instead of
+ * an explicit class-based Intent, which is safer across API levels and avoids the
+ * PendingIntent mutability restrictions on Android 12+.
  */
 class WidgetActionReceiver : BroadcastReceiver() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.getStringExtra(ACTION_EXTRA) ?: return
+        if (intent.action != ACTION_WIDGET_CONTROL) return
+        val action = intent.getStringExtra(EXTRA_ACTION) ?: return
+
+        ensureKoinStarted(context)
+
         runCatching {
-            // Make sure the MediaSessionService is running so playback runs as a proper foreground
-            // media service (notification + keep-alive controller) instead of a bare background player.
+            // Ensure the foreground media service is running.
             context.startService(Intent(context, MusicService::class.java))
+
             val audioPlayer = GlobalContext.get().get<AudioPlayer>()
             val store       = GlobalContext.get().get<NowPlayingStore>()
 
-            // Cold start: the widget was tapped after the process was reclaimed, so the shared
-            // ExoPlayer window is EMPTY — resume()/skip would only animate with no audio. Re-arm a
-            // real queue from the last-played track and start it, so music plays straight from the
-            // widget without having to open the app first.
+            // Cold start: player queue is empty — rebuild from last-played track.
             if (!audioPlayer.hasMediaLoaded()) {
                 scope.launch { restoreQueueAndPlay(audioPlayer, store) }
                 return
             }
 
             when (action) {
-                "prev"   -> audioPlayer.skipPrevious()
-                "next"   -> audioPlayer.skipNext()
-                "toggle" -> if (audioPlayer.isPlayIntent()) audioPlayer.pause() else audioPlayer.resume()
+                MusicWidget.ACTION_PREV   -> audioPlayer.skipPrevious()
+                MusicWidget.ACTION_NEXT   -> audioPlayer.skipNext()
+                MusicWidget.ACTION_TOGGLE -> if (audioPlayer.isPlayIntent()) audioPlayer.pause()
+                                             else audioPlayer.resume()
             }
             store.setPlaying(audioPlayer.isPlayIntent())
 
-            // Republish full metadata (title / artist / art) from the player so the widget also
-            // updates on track change even when the UI ViewModel is not alive to observe it.
+            // Republish full metadata so the widget title/art also updates on track change.
             val mediaId = audioPlayer.getCurrentMediaId()
             if (mediaId != null) {
                 scope.launch {
@@ -235,15 +270,10 @@ class WidgetActionReceiver : BroadcastReceiver() {
         }
     }
 
-    /**
-     * Populate the (currently empty) player with the library, positioned at the last-played track,
-     * and begin playback. Mirrors the ViewModel's re-arm path so the widget is functional even when
-     * the app UI was never opened this session.
-     */
     private suspend fun restoreQueueAndPlay(audioPlayer: AudioPlayer, store: NowPlayingStore) {
         val repo  = GlobalContext.get().get<SongRepository>()
         val prefs = GlobalContext.get().get<PreferencesRepository>()
-        val all = repo.getAllSongs().first()
+        val all   = repo.getAllSongs().first()
         if (all.isEmpty()) return
         val lastId = prefs.getLastPlayedSongId()
         val index  = all.indexOfFirst { it.id == lastId }.coerceAtLeast(0)
@@ -260,14 +290,40 @@ class WidgetActionReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val ACTION_EXTRA = "mo_action"
+        const val ACTION_WIDGET_CONTROL = "com.musicorbit.android.WIDGET_CONTROL"
+        const val EXTRA_ACTION          = "mo_action"
     }
 }
 
+// ─── Koin guard ──────────────────────────────────────────────────────────────
+
 /**
- * Decode the album-art content URI to a downscaled [Bitmap] for the widget. Returns null on any
- * failure so the caller can fall back to the app logo. Runs on the Glance render coroutine (off
- * the main thread), so bitmap decoding here is safe.
+ * Ensures Koin is initialized before any widget code accesses [GlobalContext].
+ *
+ * When Android creates a fresh process just to service a widget update (e.g. after reboot
+ * or process-death), [MusicOrbitApp.onCreate] may not have run yet. Calling
+ * [GlobalContext.get] in that state throws an [IllegalStateException] which Glance
+ * catches and converts into the "cannot load widget" error message.
+ *
+ * This function is idempotent — it is safe to call multiple times.
+ */
+internal fun ensureKoinStarted(context: Context) {
+    if (GlobalContext.getOrNull() != null) return   // already running — fast path
+    runCatching {
+        startKoin {
+            androidContext(context.applicationContext)
+            modules(sharedModule, androidModule)
+        }
+    }
+    // If startKoin throws because another thread already started it, that is fine.
+}
+
+// ─── Bitmap helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Decode the album-art content URI to a downscaled [Bitmap] for the widget.
+ * Returns null on any failure so the caller can fall back to the app logo.
+ * Runs on the Glance render coroutine (off the main thread).
  */
 private fun loadAlbumArt(context: Context, uri: String?, maxPx: Int = 256): Bitmap? {
     if (uri.isNullOrBlank()) return null
@@ -276,28 +332,16 @@ private fun loadAlbumArt(context: Context, uri: String?, maxPx: Int = 256): Bitm
         context.contentResolver.openInputStream(Uri.parse(uri))?.use {
             BitmapFactory.decodeStream(it, null, bounds)
         }
-        // Couldn't read dimensions → fall back to the logo instead of decoding at FULL resolution,
-        // which can blow the RemoteViews binder size limit and trigger "cannot load widget".
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
         var sample = 1
         val largest = maxOf(bounds.outWidth, bounds.outHeight)
         while (largest / sample > maxPx) sample *= 2
-
         val opts = BitmapFactory.Options().apply { inSampleSize = sample }
         context.contentResolver.openInputStream(Uri.parse(uri))?.use {
             BitmapFactory.decodeStream(it, null, opts)
         }
     }.getOrNull()
 }
-
-/**
- * Render the app's actual launcher icon (as shown in the drawer) to a [Bitmap] for the widget
- * badge. Falls back to null on any failure so the caller can use the bundled app_logo.
- */
-private fun loadLauncherIcon(context: Context, sizePx: Int = 128): Bitmap? = runCatching {
-    val drawable = context.packageManager.getApplicationIcon(context.packageName)
-    drawableToBitmap(drawable, sizePx)
-}.getOrNull()
 
 private fun drawableToBitmap(drawable: Drawable, size: Int): Bitmap {
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)

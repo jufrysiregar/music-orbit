@@ -99,7 +99,11 @@
         <!-- Handles transport taps coming from the Glance widget -->
         <receiver
             android:name=".widget.WidgetActionReceiver"
-            android:exported="false" />
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.musicorbit.android.WIDGET_CONTROL" />
+            </intent-filter>
+        </receiver>
 
     </application>
 
