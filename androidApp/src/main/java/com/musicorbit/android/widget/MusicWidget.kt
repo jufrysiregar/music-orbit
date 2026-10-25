@@ -90,7 +90,7 @@ class MusicWidget : GlanceAppWidget() {
         val playIcon = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
         // Always use a resource drawable (NOT a runtime Bitmap) to avoid RemoteViews size/state
         // issues during re-render on OEM launchers (Samsung). Bitmap-based ImageProviders are the
-        #1 suspect for "renders initially but fails on update".
+        // primary suspect for "renders initially but fails on update".
         val artProvider = ImageProvider(R.drawable.app_logo)
 
         provideContent {
