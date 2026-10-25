@@ -21,9 +21,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
+      # ubuntu-latest already ships with the Android SDK.
+      # We just need to point Gradle at it via local.properties.
       - name: Write local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
@@ -41,7 +40,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build APK (Debug)
-        run: ./gradlew :androidApp:assembleDebug --no-daemon --stacktrace
+        run: ./gradlew :androidApp:assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
