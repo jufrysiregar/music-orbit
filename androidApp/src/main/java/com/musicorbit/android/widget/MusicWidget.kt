@@ -87,9 +87,11 @@ class MusicWidget : GlanceAppWidget() {
             GlobalContext.get().get<NowPlayingStore>().state.value
         }.getOrDefault(NowPlayingStore.NowPlaying())
 
-        val playIcon    = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
-        val albumArt    = loadAlbumArt(context, snapshot.albumArtUri)
-        val artProvider = albumArt?.let { ImageProvider(it) } ?: ImageProvider(R.drawable.app_logo)
+        val playIcon = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        // Always use a resource drawable (NOT a runtime Bitmap) to avoid RemoteViews size/state
+        // issues during re-render on OEM launchers (Samsung). Bitmap-based ImageProviders are the
+        #1 suspect for "renders initially but fails on update".
+        val artProvider = ImageProvider(R.drawable.app_logo)
 
         provideContent {
             val ctx = LocalContext.current
@@ -115,7 +117,6 @@ class MusicWidget : GlanceAppWidget() {
             modifier          = GlanceModifier
                 .fillMaxSize()
                 .background(ColorProvider(AndroidColor.parseColor("#12101F")))
-                .cornerRadius(20.dp)
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -123,7 +124,6 @@ class MusicWidget : GlanceAppWidget() {
             Box(
                 modifier         = GlanceModifier
                     .size(52.dp)
-                    .cornerRadius(12.dp)
                     .clickable(openPlayerAction),
                 contentAlignment = Alignment.Center
             ) {
@@ -180,7 +180,6 @@ class MusicWidget : GlanceAppWidget() {
         Box(
             modifier = GlanceModifier
                 .size(size)
-                .cornerRadius(size / 2)
                 .background(ColorProvider(AndroidColor.parseColor("#2A2440")))
                 .clickable(
                     actionSendBroadcast(
