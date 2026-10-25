@@ -80,33 +80,7 @@ class MusicWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // ─── DIAGNOSTIC: absolute minimum content to test whether Glance can render AT ALL ───
-        // No Koin, no bitmap, no store, no complex layout. Just a static Text.
-        // If this still shows "cannot load", the issue is environmental (Glance setup / OEM).
-        // If it loads, we add features back one at a time to find the crash point.
-        provideContent {
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxSize()
-                    .background(ColorProvider(AndroidColor.parseColor("#12101F")))
-                    .cornerRadius(20.dp)
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text  = "Music Orbit",
-                    style = TextStyle(
-                        color      = ColorProvider(AndroidColor.WHITE),
-                        fontSize   = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-        }
-    }
-
-    /* ─── FULL VERSION (restore after diagnostic passes) ───
-    override suspend fun provideGlanceDiag(context: Context, id: GlanceId) {
+        // Ensure Koin is running (widget can be created before the user opens the app).
         ensureKoinStarted(context)
 
         val snapshot = runCatching {
@@ -122,7 +96,6 @@ class MusicWidget : GlanceAppWidget() {
             WidgetContent(ctx, snapshot, artProvider, playIcon)
         }
     }
-    */
 
     @Composable
     private fun WidgetContent(

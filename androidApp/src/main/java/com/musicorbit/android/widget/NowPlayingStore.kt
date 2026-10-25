@@ -36,7 +36,14 @@ class NowPlayingStore(private val context: Context) {
 
     /** Glance's update APIs are suspend; run them on the main-immediate scope. */
     private fun refreshWidget() {
-        scope.launch { MusicWidget().updateAll(context) }
+        scope.launch {
+            // Protect against unhandled exceptions in the update coroutine. If updateAll throws
+            // (e.g. race condition during rapid state changes, or Glance internal error), the
+            // exception would propagate to the default handler and CRASH the entire app process —
+            // which kills the widget host too, showing "cannot load widget" on the home screen.
+            // By catching silently, the widget just keeps its last-good state instead.
+            runCatching { MusicWidget().updateAll(context) }
+        }
     }
 
     /**
